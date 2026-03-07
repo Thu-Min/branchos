@@ -1,1 +1,10 @@
 branchos_project_document.md
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Runtime data
+.branchos-runtime/

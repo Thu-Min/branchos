@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can create a workstream from a branch and see it stored under a stable internal ID (not the raw branch name)
   4. User can override workstream name with `--name` flag during creation
   5. All state files contain a `schemaVersion` field and `.branchos/` artifacts are committed to git
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — Project scaffold, build pipeline, and core utilities (schema, output, constants)
@@ -103,7 +103,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI and State Foundation | 0/3 | Planned | - |
+| 1. CLI and State Foundation | 1/3 | In Progress|  |
 | 2. Codebase Mapping | 0/0 | Not started | - |
 | 3. Workflow Phases | 0/0 | Not started | - |
 | 4. Context Assembly | 0/0 | Not started | - |

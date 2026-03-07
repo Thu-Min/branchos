@@ -10,8 +10,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### CLI Foundation
 
 - [x] **CLI-01**: User can install BranchOS globally via `npm install -g branchos`
-- [ ] **CLI-02**: User can run `branchos init` to create `.branchos/` directory structure and configuration
-- [ ] **CLI-03**: User can run `branchos --help` to see all available commands with descriptions
+- [x] **CLI-02**: User can run `branchos init` to create `.branchos/` directory structure and configuration
+- [x] **CLI-03**: User can run `branchos --help` to see all available commands with descriptions
 - [x] **CLI-04**: CLI works on macOS and Linux with Node.js 18+
 
 ### Workstream Management
@@ -25,9 +25,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### State & Storage
 
-- [ ] **STA-01**: State is organized in two layers: shared repo context (`.branchos/shared/`) and workstream-scoped state (`.branchos/workstreams/<id>/`)
+- [x] **STA-01**: State is organized in two layers: shared repo context (`.branchos/shared/`) and workstream-scoped state (`.branchos/workstreams/<id>/`)
 - [ ] **STA-02**: Each workstream has machine-readable progress tracking via `state.json` with tasks, status, blockers, and remaining work
-- [ ] **STA-03**: All `.branchos/` artifacts are committed to git for team visibility
+- [x] **STA-03**: All `.branchos/` artifacts are committed to git for team visibility
 - [x] **STA-04**: Every state file includes a `schemaVersion` field for forward-compatible schema evolution
 
 ### Codebase Mapping
@@ -99,8 +99,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CLI-01 | Phase 1 | Complete |
-| CLI-02 | Phase 1 | Pending |
-| CLI-03 | Phase 1 | Pending |
+| CLI-02 | Phase 1 | Complete |
+| CLI-03 | Phase 1 | Complete |
 | CLI-04 | Phase 1 | Complete |
 | WRK-01 | Phase 1 | Pending |
 | WRK-02 | Phase 1 | Pending |
@@ -108,9 +108,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WRK-04 | Phase 5 | Pending |
 | WRK-05 | Phase 5 | Pending |
 | WRK-06 | Phase 1 | Pending |
-| STA-01 | Phase 1 | Pending |
+| STA-01 | Phase 1 | Complete |
 | STA-02 | Phase 1 | Pending |
-| STA-03 | Phase 1 | Pending |
+| STA-03 | Phase 1 | Complete |
 | STA-04 | Phase 1 | Complete |
 | MAP-01 | Phase 2 | Pending |
 | MAP-02 | Phase 2 | Pending |

@@ -1,10 +1,3 @@
-import { Command } from 'commander';
+import { program } from './cli/index.js';
 
-const program = new Command();
-
-program
-  .name('branchos')
-  .description('Branch-based AI-assisted development workflow management')
-  .version('0.1.0');
-
-program.parse();
+program.parse(process.argv);

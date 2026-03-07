@@ -12,7 +12,7 @@ BranchOS delivers team-based AI-assisted development workflows through five phas
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: CLI and State Foundation** - CLI scaffolding, git integration, state manager, workstream CRUD, directory structure
+- [x] **Phase 1: CLI and State Foundation** - CLI scaffolding, git integration, state manager, workstream CRUD, directory structure (completed 2026-03-07)
 - [ ] **Phase 2: Codebase Mapping** - Shared repo analysis, codebase map generation, staleness detection
 - [ ] **Phase 3: Workflow Phases** - Multi-phase workstream lifecycle with discuss, plan, and execute steps
 - [ ] **Phase 4: Context Assembly** - Context packet assembly, slash command integration, phase-aware context injection
@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can create a workstream from a branch and see it stored under a stable internal ID (not the raw branch name)
   4. User can override workstream name with `--name` flag during creation
   5. All state files contain a `schemaVersion` field and `.branchos/` artifacts are committed to git
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Project scaffold, build pipeline, and core utilities (schema, output, constants)
@@ -103,7 +103,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI and State Foundation | 1/3 | In Progress|  |
+| 1. CLI and State Foundation | 3/3 | Complete   | 2026-03-07 |
 | 2. Codebase Mapping | 0/0 | Not started | - |
 | 3. Workflow Phases | 0/0 | Not started | - |
 | 4. Context Assembly | 0/0 | Not started | - |

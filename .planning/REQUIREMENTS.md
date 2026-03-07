@@ -16,17 +16,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Workstream Management
 
-- [ ] **WRK-01**: User can create a workstream that auto-derives its ID from the current git branch name
-- [ ] **WRK-02**: User can override the auto-derived workstream ID with a `--name` flag
+- [x] **WRK-01**: User can create a workstream that auto-derives its ID from the current git branch name
+- [x] **WRK-02**: User can override the auto-derived workstream ID with a `--name` flag
 - [ ] **WRK-03**: User can run `branchos status` to see all active workstreams, their branches, phases, and last activity
 - [ ] **WRK-04**: User can archive a completed workstream after its branch merges
 - [ ] **WRK-05**: When user switches to a branch with no workstream, BranchOS prompts to create one
-- [ ] **WRK-06**: Workstreams use stable internal IDs for directory storage (not raw branch names) to survive branch renames
+- [x] **WRK-06**: Workstreams use stable internal IDs for directory storage (not raw branch names) to survive branch renames
 
 ### State & Storage
 
 - [x] **STA-01**: State is organized in two layers: shared repo context (`.branchos/shared/`) and workstream-scoped state (`.branchos/workstreams/<id>/`)
-- [ ] **STA-02**: Each workstream has machine-readable progress tracking via `state.json` with tasks, status, blockers, and remaining work
+- [x] **STA-02**: Each workstream has machine-readable progress tracking via `state.json` with tasks, status, blockers, and remaining work
 - [x] **STA-03**: All `.branchos/` artifacts are committed to git for team visibility
 - [x] **STA-04**: Every state file includes a `schemaVersion` field for forward-compatible schema evolution
 
@@ -102,14 +102,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-02 | Phase 1 | Complete |
 | CLI-03 | Phase 1 | Complete |
 | CLI-04 | Phase 1 | Complete |
-| WRK-01 | Phase 1 | Pending |
-| WRK-02 | Phase 1 | Pending |
+| WRK-01 | Phase 1 | Complete |
+| WRK-02 | Phase 1 | Complete |
 | WRK-03 | Phase 5 | Pending |
 | WRK-04 | Phase 5 | Pending |
 | WRK-05 | Phase 5 | Pending |
-| WRK-06 | Phase 1 | Pending |
+| WRK-06 | Phase 1 | Complete |
 | STA-01 | Phase 1 | Complete |
-| STA-02 | Phase 1 | Pending |
+| STA-02 | Phase 1 | Complete |
 | STA-03 | Phase 1 | Complete |
 | STA-04 | Phase 1 | Complete |
 | MAP-01 | Phase 2 | Pending |

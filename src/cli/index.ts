@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { registerInitCommand } from './init.js';
+import { registerWorkstreamCommands } from './workstream.js';
 
 export const program = new Command();
 
@@ -10,18 +11,7 @@ program
 
 // Register commands
 registerInitCommand(program);
-
-// Workstream command group (placeholder - subcommands added in Plan 03)
-const workstream = program
-  .command('workstream')
-  .description('Manage workstreams');
-
-workstream
-  .command('create')
-  .description('Create a new workstream (coming soon)')
-  .action(() => {
-    console.log('Workstream create not yet implemented.');
-  });
+registerWorkstreamCommands(program);
 
 // Show help when no arguments provided
 program.action(() => {

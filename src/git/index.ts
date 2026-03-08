@@ -49,6 +49,15 @@ export class GitOps {
     }
   }
 
+  async getChangedFiles(fromHash: string): Promise<string[]> {
+    try {
+      const result = await this.git.raw(['diff', '--name-only', fromHash + '..HEAD']);
+      return result.trim().split('\n').filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
   async hasChanges(files: string[]): Promise<boolean> {
     const status = await this.git.status();
     const allChanged = [

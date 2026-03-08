@@ -39,9 +39,9 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Workflow Phases
 
 - [x] **WFL-01**: Each workstream supports multiple phases, each with discuss, plan, and execute steps
-- [ ] **WFL-02**: User can run `branchos discuss-phase` to build workstream-specific discussion context (goal, requirements, assumptions, unknowns)
-- [ ] **WFL-03**: User can run `branchos plan-phase` to create an implementation plan (tasks, dependencies, affected files, risks)
-- [ ] **WFL-04**: User can run `branchos execute-phase` to update execution state (completed tasks, remaining work, blockers)
+- [x] **WFL-02**: User can run `branchos discuss-phase` to build workstream-specific discussion context (goal, requirements, assumptions, unknowns)
+- [x] **WFL-03**: User can run `branchos plan-phase` to create an implementation plan (tasks, dependencies, affected files, risks)
+- [x] **WFL-04**: User can run `branchos execute-phase` to update execution state (completed tasks, remaining work, blockers)
 - [x] **WFL-05**: Phase artifacts (discuss.md, plan.md, execute.md) are scoped to the current workstream directory
 - [ ] **WFL-06**: BranchOS reconciles planned work against actual git commits to detect drift from plan
 
@@ -116,9 +116,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MAP-02 | Phase 2 | Complete |
 | MAP-03 | Phase 2 | Complete |
 | WFL-01 | Phase 3 | Complete |
-| WFL-02 | Phase 3 | Pending |
-| WFL-03 | Phase 3 | Pending |
-| WFL-04 | Phase 3 | Pending |
+| WFL-02 | Phase 3 | Complete |
+| WFL-03 | Phase 3 | Complete |
+| WFL-04 | Phase 3 | Complete |
 | WFL-05 | Phase 3 | Complete |
 | WFL-06 | Phase 3 | Pending |
 | CTX-01 | Phase 4 | Pending |

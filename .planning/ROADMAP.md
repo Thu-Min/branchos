@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: CLI and State Foundation** - CLI scaffolding, git integration, state manager, workstream CRUD, directory structure (completed 2026-03-07)
 - [x] **Phase 2: Codebase Mapping** - Shared repo analysis, codebase map generation, staleness detection (completed 2026-03-08)
 - [ ] **Phase 3: Workflow Phases** - Multi-phase workstream lifecycle with discuss, plan, and execute steps
-- [ ] **Phase 4: Context Assembly** - Context packet assembly, slash command integration, phase-aware context injection
+- [x] **Phase 4: Context Assembly** - Context packet assembly, slash command integration, phase-aware context injection (completed 2026-03-08)
 - [ ] **Phase 5: Team Coordination** - Conflict detection, workstream status overview, archival, branch-switch prompts
 
 ## Phase Details
@@ -76,7 +76,7 @@ Plans:
   1. BranchOS assembles a context packet combining shared repo baseline, workstream metadata, branch diff summary, current plan, and execution state
   2. Context packets are delivered via Claude Code slash commands installed in `.claude/commands/`
   3. Context assembly is phase-aware: discuss phase gets architecture and conventions, plan phase gets discuss output and patterns, execute phase gets plan and test patterns
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md — Context assembly module with step detection, section composition, and GitOps extensions
@@ -108,5 +108,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. CLI and State Foundation | 3/3 | Complete   | 2026-03-07 |
 | 2. Codebase Mapping | 2/2 | Complete | 2026-03-08 |
 | 3. Workflow Phases | 2/3 | In Progress|  |
-| 4. Context Assembly | 0/2 | Not started | - |
+| 4. Context Assembly | 2/2 | Complete   | 2026-03-08 |
 | 5. Team Coordination | 0/0 | Not started | - |

@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { registerInitCommand } from './init.js';
 import { registerWorkstreamCommands } from './workstream.js';
+import { registerMapStatusCommand } from './map-status.js';
 
 export const program = new Command();
 
@@ -12,6 +13,7 @@ program
 // Register commands
 registerInitCommand(program);
 registerWorkstreamCommands(program);
+registerMapStatusCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

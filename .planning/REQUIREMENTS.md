@@ -38,11 +38,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Workflow Phases
 
-- [ ] **WFL-01**: Each workstream supports multiple phases, each with discuss, plan, and execute steps
+- [x] **WFL-01**: Each workstream supports multiple phases, each with discuss, plan, and execute steps
 - [ ] **WFL-02**: User can run `branchos discuss-phase` to build workstream-specific discussion context (goal, requirements, assumptions, unknowns)
 - [ ] **WFL-03**: User can run `branchos plan-phase` to create an implementation plan (tasks, dependencies, affected files, risks)
 - [ ] **WFL-04**: User can run `branchos execute-phase` to update execution state (completed tasks, remaining work, blockers)
-- [ ] **WFL-05**: Phase artifacts (discuss.md, plan.md, execute.md) are scoped to the current workstream directory
+- [x] **WFL-05**: Phase artifacts (discuss.md, plan.md, execute.md) are scoped to the current workstream directory
 - [ ] **WFL-06**: BranchOS reconciles planned work against actual git commits to detect drift from plan
 
 ### Context Assembly
@@ -55,7 +55,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **TEM-01**: User can run `branchos detect-conflicts` to identify file-level overlap between active workstreams
 - [ ] **TEM-02**: Conflict detection warns when two workstreams have planned or actual changes to the same files
-- [ ] **TEM-03**: Decisions made during discuss/plan phases are captured in a workstream-scoped decision log
+- [x] **TEM-03**: Decisions made during discuss/plan phases are captured in a workstream-scoped decision log
 
 ## v2 Requirements
 
@@ -115,18 +115,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MAP-01 | Phase 2 | Complete |
 | MAP-02 | Phase 2 | Complete |
 | MAP-03 | Phase 2 | Complete |
-| WFL-01 | Phase 3 | Pending |
+| WFL-01 | Phase 3 | Complete |
 | WFL-02 | Phase 3 | Pending |
 | WFL-03 | Phase 3 | Pending |
 | WFL-04 | Phase 3 | Pending |
-| WFL-05 | Phase 3 | Pending |
+| WFL-05 | Phase 3 | Complete |
 | WFL-06 | Phase 3 | Pending |
 | CTX-01 | Phase 4 | Pending |
 | CTX-02 | Phase 4 | Pending |
 | CTX-03 | Phase 4 | Pending |
 | TEM-01 | Phase 5 | Pending |
 | TEM-02 | Phase 5 | Pending |
-| TEM-03 | Phase 3 | Pending |
+| TEM-03 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 29 total

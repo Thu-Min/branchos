@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-08T05:29:09.001Z"
-last_activity: 2026-03-08 -- Completed 02-02 staleness detection and map-status CLI
+status: in-progress
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-08T06:01:30Z"
+last_activity: 2026-03-08 -- Completed 03-01 schema v2 migration and phase lifecycle
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 83
+  total_plans: 8
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Multiple developers can run structured AI-assisted workflows in the same repository without corrupting each other's planning state.
-**Current focus:** Phase 2: Codebase Mapping
+**Current focus:** Phase 3: Workflow Phases
 
 ## Current Position
 
-Phase: 2 of 5 (Codebase Mapping)
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-03-08 -- Completed 02-02 staleness detection and map-status CLI
+Phase: 3 of 5 (Workflow Phases)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-08 -- Completed 03-01 schema v2 migration and phase lifecycle
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [████████░░] 83%
 | Phase 01 P03 | 3min | 2 tasks | 12 files |
 | Phase 02 P01 | 3min | 2 tasks | 9 files |
 | Phase 02 P02 | 3min | 2 tasks | 8 files |
+| Phase 03 P01 | 5min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 02-02]: mapStatusHandler exported separately from registration for direct testability
 - [Phase 02-02]: checkStaleness reads first valid map file rather than requiring all files
 - [Phase 02-02]: getCommitsBehind returns -1 on error for graceful unknown-hash handling
+- [Phase 03-01]: Chained migration v0->v1->v2 so all schema versions migrate correctly through intermediate steps
+- [Phase 03-01]: updatePhaseStep accepts planBaseline as optional field alongside PhaseStep updates
+- [Phase 03-01]: resolveCurrentWorkstream scans meta.json files to match branch rather than relying on slug convention
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T05:29:09.000Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-workflow-phases/03-CONTEXT.md
+Last session: 2026-03-08T06:01:30Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-workflow-phases/03-01-SUMMARY.md

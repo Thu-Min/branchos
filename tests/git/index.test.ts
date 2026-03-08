@@ -163,4 +163,104 @@ describe('GitOps', () => {
       expect(await git.hasChanges(['nonexistent.txt'])).toBe(false);
     });
   });
+
+  describe('getMergeBase', () => {
+    it('returns the merge-base commit hash between HEAD and target branch', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const forkPoint = execSync('git rev-parse HEAD', { cwd: tempDir }).toString().trim();
+      const defaultBranch = execSync('git branch --show-current', { cwd: tempDir }).toString().trim();
+
+      execSync('git checkout -b feature/test', { cwd: tempDir, stdio: 'pipe' });
+      execSync('git commit --allow-empty -m "feature commit"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const mergeBase = await git.getMergeBase(defaultBranch);
+
+      expect(mergeBase).toBe(forkPoint);
+    });
+
+    it('returns null when merge-base fails', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const mergeBase = await git.getMergeBase('nonexistent-branch');
+
+      expect(mergeBase).toBeNull();
+    });
+  });
+
+  describe('getDiffNameStatus', () => {
+    it('returns file status lines between two refs', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const baseHash = execSync('git rev-parse HEAD', { cwd: tempDir }).toString().trim();
+
+      const { writeFileSync } = await import('fs');
+      writeFileSync(join(tempDir, 'new-file.txt'), 'hello');
+      execSync('git add .', { cwd: tempDir });
+      execSync('git commit -m "add file"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const result = await git.getDiffNameStatus(baseHash);
+
+      expect(result).toContain('A');
+      expect(result).toContain('new-file.txt');
+    });
+
+    it('returns empty string on error', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const result = await git.getDiffNameStatus('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef');
+
+      expect(result).toBe('');
+    });
+  });
+
+  describe('getDiffStat', () => {
+    it('returns stat summary between two refs', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const baseHash = execSync('git rev-parse HEAD', { cwd: tempDir }).toString().trim();
+
+      const { writeFileSync } = await import('fs');
+      writeFileSync(join(tempDir, 'stat-file.txt'), 'some content here');
+      execSync('git add .', { cwd: tempDir });
+      execSync('git commit -m "add stat file"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const result = await git.getDiffStat(baseHash);
+
+      expect(result).toContain('stat-file.txt');
+      expect(result).toContain('1 file changed');
+    });
+
+    it('returns empty string on error', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const result = await git.getDiffStat('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef');
+
+      expect(result).toBe('');
+    });
+  });
 });

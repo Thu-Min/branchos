@@ -1,11 +1,28 @@
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export interface Migration {
   fromVersion: number;
   migrate: (data: Record<string, unknown>) => Record<string, unknown>;
 }
 
-export const migrations: Migration[] = [];
+export const migrations: Migration[] = [
+  {
+    fromVersion: 0,
+    migrate: (data) => ({
+      ...data,
+      schemaVersion: 1,
+    }),
+  },
+  {
+    fromVersion: 1,
+    migrate: (data) => ({
+      ...data,
+      schemaVersion: 2,
+      currentPhase: 0,
+      phases: [],
+    }),
+  },
+];
 
 export function migrateIfNeeded<T extends { schemaVersion: number }>(
   data: Record<string, unknown>,

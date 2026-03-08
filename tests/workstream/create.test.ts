@@ -37,11 +37,11 @@ describe('createWorkstream', () => {
     const meta = JSON.parse(metaRaw);
     expect(meta.workstreamId).toBe('payment-retry');
     expect(meta.branch).toBe('feature/payment-retry');
-    expect(meta.schemaVersion).toBe(1);
+    expect(meta.schemaVersion).toBe(2);
 
     const stateRaw = await readFile(join(tempDir, '.branchos', 'workstreams', 'payment-retry', 'state.json'), 'utf-8');
     const state = JSON.parse(stateRaw);
-    expect(state.schemaVersion).toBe(1);
+    expect(state.schemaVersion).toBe(2);
     expect(state.status).toBe('created');
     expect(state.tasks).toEqual([]);
   });

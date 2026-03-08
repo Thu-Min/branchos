@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { createInitialState } from '../../src/state/state.js';
 
 describe('createInitialState', () => {
-  it('returns schemaVersion 1', () => {
+  it('returns schemaVersion 2', () => {
     const state = createInitialState();
-    expect(state.schemaVersion).toBe(1);
+    expect(state.schemaVersion).toBe(2);
   });
 
   it('returns status "created"', () => {
@@ -20,6 +20,6 @@ describe('createInitialState', () => {
   it('has all required fields', () => {
     const state = createInitialState();
     const keys = Object.keys(state).sort();
-    expect(keys).toEqual(['schemaVersion', 'status', 'tasks']);
+    expect(keys).toEqual(['currentPhase', 'phases', 'schemaVersion', 'status', 'tasks']);
   });
 });

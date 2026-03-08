@@ -43,13 +43,13 @@ describe('branchos init', () => {
       expect(s.isDirectory()).toBe(true);
     });
 
-    it('creates .branchos/config.json with schemaVersion 1', async () => {
+    it('creates .branchos/config.json with current schemaVersion', async () => {
       initGitRepo(tempDir);
       const { initHandler } = await import('../../src/cli/init.js');
       await initHandler({ json: false, cwd: tempDir });
       const configPath = join(tempDir, '.branchos', 'config.json');
       const content = JSON.parse(await readFile(configPath, 'utf-8'));
-      expect(content.schemaVersion).toBe(1);
+      expect(content.schemaVersion).toBe(2);
     });
 
     it('adds .branchos-runtime/ to .gitignore', async () => {

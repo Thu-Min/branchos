@@ -1,10 +1,27 @@
 import { readFile, writeFile } from 'fs/promises';
 import { CURRENT_SCHEMA_VERSION, migrateIfNeeded } from './schema.js';
 
+export interface PhaseStep {
+  status: 'not-started' | 'in-progress' | 'complete';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Phase {
+  number: number;
+  status: 'active' | 'completed';
+  discuss: PhaseStep;
+  plan: PhaseStep;
+  execute: PhaseStep;
+  planBaseline?: string;
+}
+
 export interface WorkstreamState {
   schemaVersion: number;
   status: 'created' | 'in-progress' | 'completed';
   tasks: unknown[];
+  currentPhase: number;
+  phases: Phase[];
 }
 
 export function createInitialState(): WorkstreamState {
@@ -12,6 +29,8 @@ export function createInitialState(): WorkstreamState {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     status: 'created',
     tasks: [],
+    currentPhase: 0,
+    phases: [],
   };
 }
 

@@ -19,3 +19,7 @@ export const CODEBASE_DIR = 'codebase';
 export const CONFIG_FILE = 'config.json';
 
 export const RUNTIME_DIR = '.branchos-runtime';
+
+export const PHASES_DIR = 'phases';
+
+export const DECISIONS_FILE = 'decisions.md';

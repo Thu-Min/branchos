@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { createMeta, WorkstreamMeta } from '../../src/state/meta.js';
 
 describe('createMeta', () => {
-  it('returns object with schemaVersion 1', () => {
+  it('returns object with schemaVersion 2', () => {
     const meta = createMeta('payment-retry', 'feature/payment-retry');
-    expect(meta.schemaVersion).toBe(1);
+    expect(meta.schemaVersion).toBe(2);
   });
 
   it('sets correct workstreamId', () => {

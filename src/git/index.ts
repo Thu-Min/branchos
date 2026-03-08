@@ -35,6 +35,20 @@ export class GitOps {
     await this.git.commit(message);
   }
 
+  async getHeadHash(): Promise<string> {
+    const result = await this.git.revparse(['HEAD']);
+    return result.trim();
+  }
+
+  async getCommitsBehind(fromHash: string): Promise<number> {
+    try {
+      const result = await this.git.raw(['rev-list', '--count', fromHash + '..HEAD']);
+      return parseInt(result.trim(), 10);
+    } catch {
+      return -1;
+    }
+  }
+
   async hasChanges(files: string[]): Promise<boolean> {
     const status = await this.git.status();
     const allChanged = [

@@ -82,6 +82,63 @@ describe('GitOps', () => {
     });
   });
 
+  describe('getHeadHash', () => {
+    it('returns the current HEAD commit hash', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const hash = await git.getHeadHash();
+      expect(hash).toMatch(/^[a-f0-9]{40}$/);
+      // Verify it matches what git rev-parse says
+      const expected = execSync('git rev-parse HEAD', { cwd: tempDir }).toString().trim();
+      expect(hash).toBe(expected);
+    });
+  });
+
+  describe('getCommitsBehind', () => {
+    it('returns 0 when given HEAD hash itself', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const headHash = await git.getHeadHash();
+      const behind = await git.getCommitsBehind(headHash);
+      expect(behind).toBe(0);
+    });
+
+    it('returns count of commits between ancestor and HEAD', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "first"', { cwd: tempDir });
+
+      const ancestorHash = execSync('git rev-parse HEAD', { cwd: tempDir }).toString().trim();
+
+      execSync('git commit --allow-empty -m "second"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "third"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const behind = await git.getCommitsBehind(ancestorHash);
+      expect(behind).toBe(2);
+    });
+
+    it('returns -1 for nonexistent hash (rebase scenario)', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      const behind = await git.getCommitsBehind('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef');
+      expect(behind).toBe(-1);
+    });
+  });
+
   describe('hasChanges', () => {
     it('returns true when files have changes', async () => {
       execSync('git init', { cwd: tempDir });

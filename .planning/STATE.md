@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
+stopped_at: Completed 02-02-PLAN.md
 last_updated: "2026-03-08T04:37:18.425Z"
-last_activity: 2026-03-08 -- Completed 02-01 map generation infrastructure
+last_activity: 2026-03-08 -- Completed 02-02 staleness detection and map-status CLI
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 ## Current Position
 
 Phase: 2 of 5 (Codebase Mapping)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-03-08 -- Completed 02-01 map generation infrastructure
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-03-08 -- Completed 02-02 staleness detection and map-status CLI
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [████████░░] 80%
 | Phase 01 P02 | 3min | 2 tasks | 7 files |
 | Phase 01 P03 | 3min | 2 tasks | 12 files |
 | Phase 02 P01 | 3min | 2 tasks | 9 files |
+| Phase 02 P02 | 3min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [01-03]: createWorkstream auto-commits via GitOps, consistent with init command pattern
 - [Phase 02-01]: parseMapMetadata uses indexOf+slice for colon splitting to handle values containing colons
 - [Phase 02-01]: MapConfig fields are optional so existing config.json files remain valid
+- [Phase 02-02]: mapStatusHandler exported separately from registration for direct testability
+- [Phase 02-02]: checkStaleness reads first valid map file rather than requiring all files
+- [Phase 02-02]: getCommitsBehind returns -1 on error for graceful unknown-hash handling
 
 ### Pending Todos
 
@@ -87,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-08T04:37:18.423Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-08T04:41:30Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

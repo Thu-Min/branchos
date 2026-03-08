@@ -34,7 +34,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **MAP-01**: User can run `branchos map-codebase` to generate a shared codebase map (architecture, modules, conventions)
 - [x] **MAP-02**: Codebase map is stored in `.branchos/shared/` and reused by all workstreams
-- [ ] **MAP-03**: BranchOS detects when the codebase map is stale (N commits behind HEAD) and suggests a refresh
+- [x] **MAP-03**: BranchOS detects when the codebase map is stale (N commits behind HEAD) and suggests a refresh
 
 ### Workflow Phases
 
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STA-04 | Phase 1 | Complete |
 | MAP-01 | Phase 2 | Complete |
 | MAP-02 | Phase 2 | Complete |
-| MAP-03 | Phase 2 | Pending |
+| MAP-03 | Phase 2 | Complete |
 | WFL-01 | Phase 3 | Pending |
 | WFL-02 | Phase 3 | Pending |
 | WFL-03 | Phase 3 | Pending |

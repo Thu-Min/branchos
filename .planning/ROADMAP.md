@@ -61,11 +61,12 @@ Plans:
   3. Phase artifacts (discuss.md, plan.md, execute.md) are stored in the workstream directory, not shared space
   4. BranchOS can compare planned work against actual git commits and report drift
   5. Decisions made during discuss/plan are captured in a workstream-scoped decision log
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — State schema v2 migration, phase lifecycle functions, and decision log module
+- [ ] 03-02-PLAN.md — Three slash command prompt templates and CLI phase-commands wrapper
+- [ ] 03-03-PLAN.md — Drift detection: compare planned work against actual git commits
 
 ### Phase 4: Context Assembly
 **Goal**: Claude Code receives focused, phase-appropriate context packets that combine shared repo knowledge with workstream-specific state
@@ -106,6 +107,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. CLI and State Foundation | 3/3 | Complete   | 2026-03-07 |
 | 2. Codebase Mapping | 2/2 | Complete | 2026-03-08 |
-| 3. Workflow Phases | 0/0 | Not started | - |
+| 3. Workflow Phases | 0/3 | Planning complete | - |
 | 4. Context Assembly | 0/0 | Not started | - |
 | 5. Team Coordination | 0/0 | Not started | - |

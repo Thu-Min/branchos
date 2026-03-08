@@ -47,9 +47,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Context Assembly
 
-- [ ] **CTX-01**: BranchOS assembles a focused context packet for Claude Code combining: shared repo baseline, workstream metadata, branch diff summary, current plan, and execution state
+- [x] **CTX-01**: BranchOS assembles a focused context packet for Claude Code combining: shared repo baseline, workstream metadata, branch diff summary, current plan, and execution state
 - [ ] **CTX-02**: Context packets are delivered via Claude Code slash commands
-- [ ] **CTX-03**: Context assembly is phase-aware — discuss phase gets architecture + conventions, plan phase gets discuss output + patterns, execute phase gets plan + test patterns
+- [x] **CTX-03**: Context assembly is phase-aware — discuss phase gets architecture + conventions, plan phase gets discuss output + patterns, execute phase gets plan + test patterns
 
 ### Team Coordination
 
@@ -121,9 +121,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WFL-04 | Phase 3 | Complete |
 | WFL-05 | Phase 3 | Complete |
 | WFL-06 | Phase 3 | Complete |
-| CTX-01 | Phase 4 | Pending |
+| CTX-01 | Phase 4 | Complete |
 | CTX-02 | Phase 4 | Pending |
-| CTX-03 | Phase 4 | Pending |
+| CTX-03 | Phase 4 | Complete |
 | TEM-01 | Phase 5 | Pending |
 | TEM-02 | Phase 5 | Pending |
 | TEM-03 | Phase 3 | Complete |

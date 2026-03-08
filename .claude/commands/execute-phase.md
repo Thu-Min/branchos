@@ -3,6 +3,8 @@ description: Update execution state for current workstream phase
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
 
+> **Tip:** Run `/context` first to load full workstream context for this session.
+
 # Execute Phase
 
 Update the execution state for the current workstream phase.

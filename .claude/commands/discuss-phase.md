@@ -3,6 +3,8 @@ description: Create or update discussion context for current workstream phase
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
 
+> **Tip:** Run `/context` first to load full workstream context for this session.
+
 # Discuss Phase
 
 Create or update discussion context for the current workstream phase.

@@ -3,6 +3,8 @@ description: Create implementation plan for current workstream phase
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
 
+> **Tip:** Run `/context` first to load full workstream context for this session.
+
 # Plan Phase
 
 Create an implementation plan for the current workstream phase.

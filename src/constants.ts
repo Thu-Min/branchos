@@ -14,6 +14,8 @@ export const SHARED_DIR = 'shared';
 
 export const WORKSTREAMS_DIR = 'workstreams';
 
+export const CODEBASE_DIR = 'codebase';
+
 export const CONFIG_FILE = 'config.json';
 
 export const RUNTIME_DIR = '.branchos-runtime';

@@ -36,3 +36,14 @@ export function success(
     console.log(chalk.green('\u2713 ') + message);
   }
 }
+
+export function warning(
+  message: string,
+  options: { json?: boolean },
+): void {
+  if (options.json) {
+    console.error(JSON.stringify({ warning: message }));
+  } else {
+    console.error(chalk.yellow('Warning: ') + message);
+  }
+}

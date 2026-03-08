@@ -4,6 +4,7 @@ import { registerWorkstreamCommands } from './workstream.js';
 import { registerMapStatusCommand } from './map-status.js';
 import { registerPhaseCommands } from './phase-commands.js';
 import { registerCheckDriftCommand } from './check-drift.js';
+import { registerContextCommand } from './context.js';
 
 export const program = new Command();
 
@@ -18,6 +19,7 @@ registerWorkstreamCommands(program);
 registerMapStatusCommand(program);
 registerPhaseCommands(program);
 registerCheckDriftCommand(program);
+registerContextCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

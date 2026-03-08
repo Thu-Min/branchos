@@ -137,10 +137,13 @@ describe('contextHandler', () => {
       ],
     });
 
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { contextHandler } = await import('../../src/cli/context.js');
+
+    const logCalls: unknown[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => { logCalls.push(args[0]); };
     const result = await contextHandler(undefined, { cwd: tempDir, json: true });
-    consoleSpy.mockRestore();
+    console.log = originalLog;
 
     expect(result).not.toBeNull();
     expect(result!.step).toBe('execute');
@@ -149,9 +152,8 @@ describe('contextHandler', () => {
     expect(result!.raw).toBeDefined();
 
     // Verify JSON was logged
-    expect(consoleSpy).toHaveBeenCalled();
-    const logged = consoleSpy.mock.calls[0][0];
-    const parsed = JSON.parse(logged);
+    expect(logCalls.length).toBeGreaterThan(0);
+    const parsed = JSON.parse(logCalls[0] as string);
     expect(parsed).toHaveProperty('step');
     expect(parsed).toHaveProperty('header');
     expect(parsed).toHaveProperty('sections');
@@ -254,13 +256,16 @@ describe('contextHandler', () => {
       phases: [],
     });
 
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { contextHandler } = await import('../../src/cli/context.js');
-    await contextHandler(undefined, { cwd: tempDir });
-    consoleSpy.mockRestore();
 
-    expect(consoleSpy).toHaveBeenCalled();
-    const logged = consoleSpy.mock.calls[0][0];
+    const logCalls: unknown[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => { logCalls.push(args[0]); };
+    await contextHandler(undefined, { cwd: tempDir });
+    console.log = originalLog;
+
+    expect(logCalls.length).toBeGreaterThan(0);
+    const logged = logCalls[0] as string;
     // Should be raw markdown, not JSON
     expect(logged).toContain('## Context Packet');
   });

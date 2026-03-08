@@ -58,6 +58,31 @@ export class GitOps {
     }
   }
 
+  async getMergeBase(targetBranch: string): Promise<string | null> {
+    try {
+      const result = await this.git.raw(['merge-base', 'HEAD', targetBranch]);
+      return result.trim();
+    } catch {
+      return null;
+    }
+  }
+
+  async getDiffNameStatus(fromRef: string): Promise<string> {
+    try {
+      return await this.git.raw(['diff', '--name-status', fromRef + '..HEAD']);
+    } catch {
+      return '';
+    }
+  }
+
+  async getDiffStat(fromRef: string): Promise<string> {
+    try {
+      return await this.git.raw(['diff', '--stat', fromRef + '..HEAD']);
+    } catch {
+      return '';
+    }
+  }
+
   async hasChanges(files: string[]): Promise<boolean> {
     const status = await this.git.status();
     const allChanged = [

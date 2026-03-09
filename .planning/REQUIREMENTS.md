@@ -53,8 +53,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Team Coordination
 
-- [ ] **TEM-01**: User can run `branchos detect-conflicts` to identify file-level overlap between active workstreams
-- [ ] **TEM-02**: Conflict detection warns when two workstreams have planned or actual changes to the same files
+- [x] **TEM-01**: User can run `branchos detect-conflicts` to identify file-level overlap between active workstreams
+- [x] **TEM-02**: Conflict detection warns when two workstreams have planned or actual changes to the same files
 - [x] **TEM-03**: Decisions made during discuss/plan phases are captured in a workstream-scoped decision log
 
 ## v2 Requirements
@@ -124,8 +124,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTX-01 | Phase 4 | Complete |
 | CTX-02 | Phase 4 | Complete |
 | CTX-03 | Phase 4 | Complete |
-| TEM-01 | Phase 5 | Pending |
-| TEM-02 | Phase 5 | Pending |
+| TEM-01 | Phase 5 | Complete |
+| TEM-02 | Phase 5 | Complete |
 | TEM-03 | Phase 3 | Complete |
 
 **Coverage:**

@@ -1,300 +1,268 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** CLI developer workflow tool with git-committed file-based state, branch-scoped workstreams, multi-developer coordination
-**Project:** BranchOS
-**Researched:** 2026-03-07
-**Confidence:** HIGH (training data covers this problem space thoroughly -- Terraform state, git-based CMS tools, and similar state-in-repo patterns are well-documented failure modes)
+**Domain:** CLI developer workflow tool -- adding project-level planning layer (PR-FAQ ingestion, roadmap generation, feature registry, GitHub Issues sync, slash-command migration) to existing v1 system
+**Project:** BranchOS v2.0
+**Researched:** 2026-03-09
+**Confidence:** HIGH (codebase analysis, API documentation, community patterns, prior v1 pitfalls research)
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data loss, or team-wide workflow breakdowns.
+### Pitfall 1: GitHub Issues sync creates duplicates on re-run
 
----
+**What goes wrong:**
+`sync-issues` creates duplicate GitHub Issues every time it runs because there is no reliable deduplication key. Title-based matching is fragile (titles get edited on GitHub), and label-based matching misses renamed or relabeled issues. Teams end up with 3 copies of "Auth System" cluttering their issue tracker and lose trust in the tool.
 
-### Pitfall 1: Git Merge Conflicts in Machine-Generated State Files
+**Why it happens:**
+GitHub's REST API has no built-in idempotency for issue creation. `POST /repos/{owner}/{repo}/issues` always creates a new issue. Developers assume "search by title first" is sufficient, but titles are edited on GitHub's side, creating drift between the local feature registry and remote issues.
 
-**What goes wrong:** BranchOS commits all `.branchos/` artifacts to git. When two developers create or modify workstreams and merge branches, `state.json` files, shared codebase maps, and other machine-generated JSON/structured files produce git merge conflicts that are unintelligible to developers. Unlike source code, these files have no semantic meaning to humans -- a three-way merge on `state.json` produces garbage.
-
-**Why it happens:** The decision to commit all artifacts to git means every structured file becomes a merge surface. JSON is particularly hostile to git merging -- reordered keys, changed array indices, and nested objects create diff noise. The shared layer (`.branchos/shared/`) is the worst offender: every branch touches the same codebase map.
-
-**Consequences:**
-- Developers manually resolve merge conflicts in files they don't understand
-- Corrupt state goes undetected until the next `branchos` command fails
-- Team loses trust in the tool and abandons it
-- Shared codebase map becomes a merge bottleneck on every PR
-
-**Warning signs:**
-- During early team testing, shared codebase map creates merge conflicts on nearly every PR
-- Developers start adding `.branchos/` to `.gitignore` to avoid conflicts
-- `state.json` merge resolutions produce invalid JSON
-
-**Prevention:**
-1. Design state files for merge-friendliness from day one: one file per concern, append-only where possible, avoid arrays (use objects keyed by stable IDs instead)
-2. For the shared codebase map: use a single-writer model where `branchos map-codebase` always regenerates from scratch rather than patching. Conflicts resolve by "take theirs" -- the most recent map wins
-3. Add a `branchos repair` command that validates and fixes corrupt state
-4. Use `.gitattributes` to mark specific files with custom merge drivers (e.g., `*.branchos.json merge=branchos`)
-5. Consider a merge strategy attribute: `state.json` could use `merge=ours` for workstream-scoped files (the branch owner's version is always correct)
-
-**Phase mapping:** Must be addressed in Phase 1 (state format design). Retrofitting merge-friendly formats after adoption is a breaking change.
-
----
-
-### Pitfall 2: Orphaned Workstream State After Branch Operations
-
-**What goes wrong:** Workstreams are identified by branch name, but git branches are ephemeral. Developers rebase, rename branches, delete and recreate branches, use `git checkout -b` with typos, or have branches deleted by GitHub after PR merge. The workstream state becomes orphaned -- files exist in `.branchos/workstreams/<old-branch-name>/` but no branch matches.
-
-**Why it happens:** Branch names are mutable identifiers used as directory names. Git provides no lifecycle hooks for branch rename/delete that a CLI tool can intercept. The auto-ID-from-branch-name design means any branch name change breaks the link.
-
-**Consequences:**
-- `.branchos/workstreams/` accumulates dead directories
-- `branchos status` shows phantom workstreams
-- Developer creates a "new" workstream on a renamed branch, losing previous planning context
-- Archival logic can't match merged branches to workstream directories
+**How to avoid:**
+Store the GitHub Issue number back into the local feature file after creation. The feature file (e.g., `.branchos/shared/features/auth-system.md`) becomes the source of truth for the link. On subsequent `sync-issues` runs:
+1. If the feature file has an `issue: #N` field in frontmatter, update that issue (PATCH), do not create.
+2. If no issue number stored, search by a tool-controlled label like `branchos:auth-system` (not title).
+3. Only create if both checks fail.
+4. Always write the issue number back to the feature file and git commit immediately after creation.
 
 **Warning signs:**
-- During testing, a branch rename immediately orphans state
-- After PR merges via GitHub, workstream archival fails because the local branch is gone
-- `branchos status` output grows with ghost entries
+- Feature files have no `issue` field after sync
+- Tests only cover the "create new" code path, not "update existing"
+- No integration test that runs `sync-issues` twice and asserts zero new issues
 
-**Prevention:**
-1. Store branch name in workstream metadata (inside `state.json`) as a soft link, not as the directory name. Use a stable workstream ID (short hash or sequential ID) for the directory.
-2. Add a reconciliation command (`branchos reconcile`) that matches workstreams to current branches and flags orphans
-3. On workstream creation, record the initial commit SHA as an anchor point -- even if the branch is renamed, the commit graph can locate it
-4. Archival should work from merge commit detection (walk the git log), not branch name matching
-
-**Phase mapping:** Core identity model must be decided in Phase 1. The auto-ID-from-branch design in PROJECT.md is the specific thing to be careful about -- use branch name as display name but not as the storage key.
+**Phase to address:**
+GitHub Issues sync phase. The `issue` field must be designed into the feature file schema from the start (feature registry phase), even if sync is built later.
 
 ---
 
-### Pitfall 3: Stale Shared Context Causing AI Hallucinations
+### Pitfall 2: PR-FAQ parsing is brittle -- assumes exact markdown structure
 
-**What goes wrong:** The shared codebase map in `.branchos/shared/` goes stale as the codebase evolves. Claude Code receives outdated architecture information, references deleted files, suggests patterns that have been refactored away, or misses new modules. The AI gives confidently wrong guidance based on BranchOS's stale context.
+**What goes wrong:**
+The PR-FAQ parser breaks when the Product Owner uses slightly different heading levels, adds extra sections, uses bullet lists instead of paragraphs, or includes unexpected markdown features (tables, callouts, HTML). The tool either crashes or silently drops sections, producing an incomplete roadmap.
 
-**Why it happens:** Staleness detection based on "N commits behind" is a heuristic. A single commit can restructure the entire codebase. Developers skip the refresh because it takes time. The shared map is updated on one branch but not yet merged to others, so different developers see different versions of "truth."
+**Why it happens:**
+Developers build parsers that match exact heading text (`## Press Release`, `## Customer FAQ`) instead of parsing structure flexibly. Markdown is freeform -- there is no enforced schema. The PR-FAQ is a "living document" that evolves, and each edit risks breaking the parser.
 
-**Consequences:**
-- AI suggests edits to files that no longer exist
-- Architectural guidance contradicts recent refactoring
-- Developer trusts BranchOS context over their own knowledge, introducing bugs
-- Different developers get different AI guidance because their branches have different shared map versions
+**How to avoid:**
+Do NOT parse PR-FAQ with regex or rigid heading matchers. Instead:
+1. Use YAML frontmatter for machine-readable metadata (feature list, milestone names, priorities). The prose sections are for AI consumption during roadmap generation, not structured extraction.
+2. When generating the roadmap, pass the entire PR-FAQ content to Claude as context rather than trying to extract structured data programmatically.
+3. If you must parse sections, use a proper markdown AST parser (remark/unified ecosystem) and match on heading hierarchy, not exact text.
+4. Validate gracefully: warn about unrecognized sections rather than failing.
 
 **Warning signs:**
-- Codebase map references files that return 404
-- AI suggestions conflict with recent team decisions
-- Developers stop trusting the `map-codebase` output
+- Parser uses regex like `/^## Press Release$/`
+- No test cases with "messy" PR-FAQ input (extra headings, typos, reordered sections)
+- Parser fails on the first real PO-written document
 
-**Prevention:**
-1. Staleness detection should check file existence, not just commit count. If the map references files that don't exist on disk, it's stale regardless of commit count.
-2. Include a lightweight hash of file tree structure (just paths, not contents) in the map metadata. Compare on every context assembly -- warn if tree has changed.
-3. Context assembly should include a freshness disclaimer in the prompt when the map is older than a threshold
-4. Consider differential updates: track which files changed since last map, only re-analyze those
-
-**Phase mapping:** Staleness detection belongs in Phase 2 (after basic mapping works). But the map metadata format that enables staleness checking must be designed in Phase 1.
+**Phase to address:**
+PR-FAQ ingestion (first phase). Get the parsing approach right before anything depends on it.
 
 ---
 
-### Pitfall 4: Context Packet Explosion
+### Pitfall 3: Roadmap refresh destroys manual edits
 
-**What goes wrong:** The context packet assembled for Claude Code (shared context + workstream metadata + branch diff + plan + execution state + decisions) exceeds useful context window size. The AI gets so much context that it loses focus, or the tool silently truncates important information.
+**What goes wrong:**
+Team reviews roadmap, manually adjusts milestones, reorders features, adds notes. Then PR-FAQ changes and someone runs `refresh-roadmap`. The regenerated roadmap overwrites all manual edits because it was generated fresh from the PR-FAQ.
 
-**Why it happens:** Each layer of the context packet grows independently. A large codebase map + a complex plan + a big diff + accumulated decisions = tens of thousands of tokens. Nobody budgets the context window during design, so it's discovered when the tool is already in use.
+**Why it happens:**
+The vision says "explicit refresh-roadmap command" but does not specify merge semantics. The naive implementation regenerates from scratch. Since the roadmap is AI-generated markdown, there is no structured diff mechanism -- it is a full replacement.
 
-**Consequences:**
-- Claude Code ignores parts of the context or gives shallow responses
-- Silent truncation drops critical information (often the most recent, most relevant state)
-- Developers don't understand why AI quality degrades on large workstreams
-- Workaround is manual context curation, defeating the tool's purpose
+**How to avoid:**
+1. Separate machine-generated content from human edits. Use YAML/JSON for machine-managed parts (milestone order, feature assignments, dependencies) and markdown body for human prose. Refresh only regenerates the structured parts.
+2. Alternatively, on refresh, show a diff of what changed and require confirmation before writing. `refresh-roadmap` should be a review workflow, not a blind overwrite.
+3. Store a content hash of the PR-FAQ that was used to generate the current roadmap. On refresh, show what changed in the PR-FAQ since last generation.
+4. Consider `ROADMAP.md` as human-owned after initial generation. Refresh produces a `ROADMAP.proposed.md` for review, not a direct overwrite.
 
 **Warning signs:**
-- Context packets exceed 8K tokens during testing with realistic workstreams
-- AI responses ignore information that's clearly in the context
-- Longer workstreams produce worse AI guidance than shorter ones
+- `plan-roadmap` and `refresh-roadmap` use the same code path with no merge logic
+- No test for "refresh after manual edit preserves edits"
+- ROADMAP.md has no metadata about when/how it was generated
 
-**Prevention:**
-1. Set a hard token budget for context packets (e.g., 12K tokens) and design each layer with a sub-budget
-2. Implement relevance filtering: not all decisions matter for every phase. Execution phase doesn't need full discuss-phase transcripts.
-3. Summarize older phases instead of including raw artifacts. Phase N should see summaries of phases 1 through N-2, details of N-1, and full context of N.
-4. Include a "context manifest" at the top of the packet listing what was included and what was omitted, so the AI knows what it doesn't have
-
-**Phase mapping:** Context assembly design is Phase 2 or 3, but the storage format that enables summarization (clear phase boundaries, separable artifacts) must be Phase 1.
+**Phase to address:**
+Roadmap generation phase. The refresh strategy must be designed alongside initial generation, not bolted on later.
 
 ---
 
-### Pitfall 5: Slash Command Integration Fragility
+### Pitfall 4: Slash-command migration breaks existing users with no escape hatch
 
-**What goes wrong:** BranchOS relies on Claude Code slash commands for context injection. Slash command APIs are not stable, documented, or versioned by Anthropic. A Claude Code update changes how slash commands work, breaking BranchOS for every user simultaneously.
+**What goes wrong:**
+Migrating from CLI commands to slash-command-only architecture means existing `branchos workstream create` invocations stop working. Users who have muscle memory, scripts, or documentation referencing CLI commands are stranded. Worse, if the slash commands require Claude Code but users sometimes work without it, they lose all functionality.
 
-**Why it happens:** Building on an undocumented integration surface. Claude Code is a rapidly evolving product. Slash command behavior, available APIs, and context injection mechanisms can change without notice.
+**Why it happens:**
+The vision says "CLI reduced to bootstrapper (init, install slash commands)" which implies removing working CLI commands. The assumption is everyone uses Claude Code all the time, but teams have mixed workflows. Additionally, Claude Code merged slash commands into "skills" in v2.1.3 (January 2026), so the installation target directory and mechanism may need updating.
 
-**Consequences:**
-- A Claude Code update breaks BranchOS with no migration path
-- Users blame BranchOS for what's actually a Claude Code change
-- No way to pin Claude Code versions in team environments
-- Entire tool becomes unusable until updated
+**How to avoid:**
+1. Keep CLI commands working throughout v2. Deprecate with warnings, do not remove.
+2. Slash commands should shell out to the CLI (as they already do for `context`), not replace the CLI logic. The CLI is the engine; slash commands are the UX layer.
+3. Add a deprecation notice: `branchos workstream create` prints "Tip: Use /branchos:workstream-create in Claude Code" but still works.
+4. Account for the Claude Code slash-commands-to-skills migration. Install to `.claude/commands/` (still backwards compatible) but also support `.claude/skills/` as the forward path. Both directories work in Claude Code 2.1.3+.
+5. New v2 commands should ship with both CLI and slash command interfaces from day one.
 
 **Warning signs:**
-- Claude Code release notes mention slash command changes
-- Slash command behavior varies between Claude Code versions on the team
-- Integration tests pass locally but fail for users on different Claude Code versions
+- PRs that delete CLI command registrations from Commander
+- No `--help` output mentions slash command equivalents
+- `install-commands` only targets `~/.claude/commands/`, not project-level `.claude/commands/` or `.claude/skills/`
 
-**Prevention:**
-1. Abstract the Claude Code integration behind an adapter layer. The core tool should produce context packets as plain text/markdown. The slash command is one delivery mechanism, not the only one.
-2. Support a fallback mode: `branchos context` outputs context to stdout/clipboard, usable via paste if slash commands break
-3. Design the context output to be copy-paste friendly (self-contained markdown) so it works even without slash command integration
-4. Add a `branchos doctor` command that validates the Claude Code integration is working
-5. Pin and document the minimum Claude Code version. Test against Claude Code updates in CI.
-
-**Phase mapping:** Adapter layer architecture should be Phase 1. The temptation will be to hard-couple to slash commands for speed -- resist this.
+**Phase to address:**
+Should be a constraint across ALL phases, not a single migration phase. Each new feature should have both CLI and slash command interfaces.
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 5: Feature registry becomes stale -- no single source of truth
 
-### Pitfall 6: Race Condition in Concurrent Workstream Creation
+**What goes wrong:**
+Feature status lives in three places: the feature file (`.branchos/shared/features/auth-system.md`), the GitHub Issue (open/closed, labels), and the workstream state (`state.json`). They drift apart. The feature file says "in-progress" but the GitHub Issue is closed. Or the workstream is archived but the feature still says "assigned."
 
-**What goes wrong:** Two developers simultaneously run `branchos` commands that modify the shared layer. One developer's codebase map write is partially overwritten by another's. File-level conflict detection races when two developers claim overlapping files.
+**Why it happens:**
+Distributed state without automatic reconciliation. Each system (local files, GitHub, workstreams) is updated independently. The vision says "assignment happens on GitHub" but status tracking is local. There is no event-driven sync.
 
-**Why it happens:** File-based state has no locking mechanism. Git commits are not atomic across multiple files. Two developers on different branches can both modify `.branchos/shared/` and only discover the conflict at merge time.
+**How to avoid:**
+1. Make feature files the single source of truth for BranchOS. GitHub Issues are a projection (created from features), not the authority.
+2. Status in feature files should only change through BranchOS commands, never manual edits.
+3. Do NOT try to sync status back from GitHub. It adds complexity without proportional value for a 2-5 person team. The team knows what is happening.
+4. Document explicitly: "GitHub Issue status and feature file status may diverge. Feature files reflect BranchOS workflow state. GitHub Issues reflect team discussion."
 
-**Prevention:**
-1. Shared layer writes should be idempotent and regenerative (full rewrite, not patch)
-2. Conflict detection should be read-only against committed state, never write to shared files
-3. Consider a lock file pattern (`.branchos/shared/.lock`) for operations that modify shared state, with stale lock detection
-4. Document that `map-codebase` should be run on main/trunk, not feature branches
+**Warning signs:**
+- Feature status enum has states that mirror GitHub Issue states (e.g., "closed")
+- Code that polls GitHub Issues to update local feature files
+- Multiple commands can change feature status through different code paths
 
-**Phase mapping:** Phase 2 (when implementing conflict detection).
-
----
-
-### Pitfall 7: Workstream State Schema Evolution
-
-**What goes wrong:** `state.json` format changes between BranchOS versions. Developers on different versions produce incompatible state. Old workstreams can't be read by new versions. No migration path exists.
-
-**Why it happens:** Greenfield projects iterate on state format rapidly. Without schema versioning from day one, every format change is a breaking change.
-
-**Prevention:**
-1. Include a `schemaVersion` field in every state file from the very first version
-2. Implement forward-compatible reading: unknown fields are preserved, not dropped
-3. Write migration functions keyed by schema version. Run automatically on read.
-4. Never remove fields -- deprecate and ignore them
-
-**Phase mapping:** Phase 1. The `schemaVersion` field must be in the initial format.
+**Phase to address:**
+Feature registry phase. The status model must be designed before GitHub sync is built.
 
 ---
 
-### Pitfall 8: Workstream Archival Loses Important Context
+### Pitfall 6: Schema migration becomes a combinatorial nightmare
 
-**What goes wrong:** When a branch merges and the workstream is archived, the planning context (decisions, discussion, architectural reasoning) becomes hard to find. Future developers working in the same area can't discover why decisions were made.
+**What goes wrong:**
+v2 adds `featureId`, `issueNumber`, and `projectContext` fields to `WorkstreamMeta` and `WorkstreamState`. The existing chained migration system (v0->v1->v2) needs a v2->v3 migration. But if feature registry also needs its own schema, and PR-FAQ metadata needs a schema, you end up with 3-4 separate schema systems that all need migration logic, versioning, and testing.
 
-**Why it happens:** Archival moves state out of the active namespace. There's no search or discovery mechanism. Git history technically preserves everything, but nobody will `git log` through `.branchos/workstreams/feature-auth/decisions.md`.
+**Why it happens:**
+The current migration system in `src/state/schema.ts` is workstream-focused (`state.json` and `meta.json` only). v2 introduces new file types (feature files, roadmap metadata, PR-FAQ metadata) that each need their own structure. Developers add ad-hoc schema handling to each new file type instead of generalizing.
 
-**Prevention:**
-1. Archival should produce a summary document committed to a discoverable location (e.g., `.branchos/archive/` with an index)
-2. Key decisions should be promoted to the shared layer, not buried in workstream archives
-3. Consider a `branchos history <file>` command that shows which workstreams touched a given file
+**How to avoid:**
+1. Use YAML frontmatter for all new markdown files (features, roadmap) with a `schemaVersion` field. The existing `migrateIfNeeded` pattern works -- extend it rather than creating parallel systems.
+2. Define all new interfaces upfront: `FeatureFile`, `RoadmapMeta`, `ProjectConfig`. Add them to a single schema registry.
+3. Keep the workstream migration chain simple: one version bump (schema v2 -> v3) that adds all v2.0 fields to existing files. Do NOT create separate version tracks per file type.
+4. New file types (features, roadmap) start at schema v1 with their own migration chains but share the same `migrateIfNeeded` infrastructure.
 
-**Phase mapping:** Phase 3 or later (archival is not MVP), but the decision storage format in Phase 1 should anticipate this.
+**Warning signs:**
+- Multiple `migrateIfNeeded` functions with different version tracks and no shared code
+- Feature files have no `schemaVersion` field
+- Tests only cover fresh creation, not migration from v1 workstream state
 
----
-
-### Pitfall 9: npm Global Install Pain
-
-**What goes wrong:** `npm install -g` is notoriously unreliable across platforms. Permission issues on macOS/Linux, path issues on Windows, nvm/volta/fnm version manager conflicts, corporate proxies blocking npm. First-run experience fails before the tool is ever used.
-
-**Why it happens:** Global npm packages are a known pain point. Every Node.js version manager handles them differently. Corporate environments add layers of complexity.
-
-**Prevention:**
-1. Support `npx branchos` as an alternative to global install
-2. Provide clear error messages for common install failures (permissions, path, Node.js version)
-3. Minimum Node.js version should be 18 (LTS) -- don't require cutting-edge
-4. Test install on macOS, Linux, and Windows in CI
-5. Consider a standalone binary distribution (pkg, bun compile, or similar) as a future option
-
-**Phase mapping:** Phase 1 (distribution setup).
+**Phase to address:**
+Must be decided in the first phase (PR-FAQ/foundation) and enforced in every subsequent phase.
 
 ---
 
-### Pitfall 10: Testing a Git-Dependent Tool
+## Technical Debt Patterns
 
-**What goes wrong:** Unit tests that depend on real git operations are slow, flaky, and hard to set up. Tests need real repos with branches, commits, and merges. CI environments have different git configurations. Test isolation requires creating and destroying repos per test.
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Embedding slash command content as string literals in `install-commands.ts` | Single file, no asset loading | Adding/editing commands requires rebuilding npm package; 500+ line template literals are unreadable | Never for v2 -- move to separate .md files loaded at install time |
+| Regex-based markdown parsing for PR-FAQ | Quick to implement for known format | Breaks on unexpected input, hard to extend, no error recovery | Only for simple frontmatter extraction (YAML between `---` fences); use AST for body parsing |
+| Storing feature state in markdown prose instead of frontmatter | Human-readable at a glance | Hard to query programmatically, parsing is fragile | Never -- use YAML frontmatter for machine state, markdown body for human description |
+| Single-file roadmap (combined machine + human content) | Simpler file structure | Refresh destroys edits, no way to tell what is auto-generated vs. human-written | Only in initial MVP if `refresh-roadmap` is not yet implemented |
+| Skipping GitHub API rate limiting / retry | Faster development, less code | Fails silently when rate limited; 2-5 person team unlikely to hit limits but CI/testing might | Acceptable in MVP if you handle 403 responses with a clear error message |
+| Direct `gh` CLI subprocess calls instead of GitHub REST API | No need for auth token management, simpler code | Requires `gh` installed and authenticated; harder to test | Acceptable -- `gh` handles auth well and BranchOS is a CLI tool for developers who likely have `gh` |
 
-**Why it happens:** The tool is deeply integrated with git. Mocking git is fragile (too many edge cases). Real git operations in tests are slow and stateful.
+## Integration Gotchas
 
-**Prevention:**
-1. Separate pure logic (state parsing, context assembly, conflict detection) from git operations. Test pure logic without git.
-2. Create a small git test fixture library: helper functions that create repos with specific branch/commit topologies
-3. Use `git init --bare` + `git clone` for test repos (faster than full repos)
-4. Integration tests run against real git but are tagged separately for CI
-5. Consider snapshot testing for context packet output
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| GitHub Issues API via `gh` | Creating issues without storing the returned issue number locally | Always parse `gh issue create` output for the issue URL/number, write back to feature file, git commit |
+| GitHub Issues API via `gh` | Using title match to find existing issues | Search by tool-controlled label (`branchos:<feature-id>`); titles are user-editable and unreliable |
+| GitHub Issues API via `gh` | Assuming `gh` CLI is always available and authenticated | Check for `gh` binary and `gh auth status` before any sync operation; provide clear error with install instructions |
+| GitHub Labels | Creating labels without checking existence | Use `gh label create` which does not error if label exists (with `2>/dev/null`), or check first |
+| Claude Code commands/skills | Installing only to `~/.claude/commands/` (global) | Project-level `.claude/commands/` is better for team sharing and version control. Support both. |
+| Claude Code commands/skills | Not accounting for the skills merge in v2.1.3 | Both `commands/` and `skills/` directories work; commands files are backwards compatible |
+| Git auto-commits during sync | Auto-committing after each feature file update in a loop (N commits for N features) | Batch all changes, single commit at end of sync operation |
+| simple-git library | Assuming git operations complete synchronously | simple-git operations are async; avoid concurrent git operations from the same process |
+| `AssemblyInput` interface | Adding feature context as another optional string field (like `discussMd`) | The `AssemblyInput` interface already has 14 fields. Group feature context into a sub-object or create a `FeatureContext` type |
 
-**Phase mapping:** Phase 1 (testing infrastructure should be set up alongside the first feature).
+## Performance Traps
 
----
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Reading all feature files on every command invocation | Slow startup as feature count grows | Lazy-load: only read the feature linked to the current workstream | 50+ features (unlikely for 2-5 person team, but possible) |
+| Calling `gh` CLI for each feature during `sync-issues` | Sync takes minutes; each `gh` call is a subprocess + HTTP request | Batch: `gh issue list --label branchos --json number,title,labels` fetches all at once, then diff locally | 15+ features |
+| Regenerating full roadmap on every PR-FAQ change | Slow if using AI generation; burns API tokens | Hash PR-FAQ content, only regenerate if hash changed from stored hash | Any project where refresh is run more than occasionally |
+| Assembling context with all feature files included in packet | Context packet grows beyond useful size, degrades AI quality | Include only the feature linked to current workstream, not all features | 20+ features with detailed acceptance criteria |
+| Scanning all workstream directories to find current branch match | Slow with many archived workstreams | Index active workstreams in a lightweight manifest, or filter by `status: active` in meta.json | 50+ total workstreams (including archived) |
 
-## Minor Pitfalls
+## Security Mistakes
 
-### Pitfall 11: Over-Engineering Conflict Detection
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Storing GitHub tokens in `.branchos/config.json` | Token committed to git, exposed to all repo collaborators | Never store tokens. Rely on `gh auth status`. The `gh` CLI handles authentication and token storage. |
+| Including GitHub Issue body/comments in context packets | Private discussion, security reports, or sensitive info leaks into AI context | Only sync issue number, title, and labels. Never pull full issue body into local files. |
+| `sync-issues` auto-creates issues in public repos without review | Internal feature names, acceptance criteria, and implementation plans become public | Always show dry-run output before creating issues; require `--confirm` flag or `--dry-run` default |
+| Feature files with acceptance criteria committed to a public repo | Internal quality criteria and edge cases visible to competitors/public | This is by design (all artifacts in git), but warn users during `init` if repo is public |
 
-**What goes wrong:** File-level conflict detection seems simple but has edge cases: renamed files, moved files, files that exist in one branch but not another, symlinks, generated files. The temptation is to handle every edge case, turning a simple feature into a mini version control system.
+## UX Pitfalls
 
-**Prevention:**
-1. Stick to the simplest possible detection: "do any workstreams list the same file path in their modified files?"
-2. Use git's own diff machinery to detect file changes, don't reimplement it
-3. Accept false positives (flag conflicts that aren't real) over false negatives (miss real conflicts)
-4. Ship the simple version, then add nuance based on actual user complaints
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| `sync-issues` silently succeeds with no output | User does not know what was created, updated, or skipped | Print a summary table: "Created: 3, Updated: 1, Skipped (unchanged): 5, Errors: 0" |
+| `refresh-roadmap` overwrites without warning | User loses manual edits, loses trust in tool | Show diff preview, require confirmation. Or generate to `ROADMAP.proposed.md` for review. |
+| Feature-aware workstream creation fails on wrong feature ID | User types wrong ID, gets cryptic "feature not found" error | List available features with fuzzy match: "Did you mean 'auth-system'? Available: auth-system, payment-flow, dashboard-ui" |
+| `plan-roadmap` generates roadmap but user does not know what is editable | AI-generated roadmap feels opaque | Generate with clear markers: frontmatter is machine-managed, body sections are freely editable |
+| PR-FAQ ingestion gives no feedback on what was understood | User does not know if their document was parsed correctly | Print extracted structure: "Found: Press Release (245 words), 3 Customer FAQs, 2 Internal FAQs" |
+| New slash commands require memorizing names | Cognitive load increases with each new command | Add a `/branchos:help` command that lists all available commands with one-line descriptions |
+| `discuss-project` is confusing vs `discuss-phase` | Users do not know which command to use when | Clear naming: `discuss-project` is for PR-FAQ creation, `discuss-phase` is for workstream phases. Help text should clarify. |
 
-**Phase mapping:** Phase 2 (conflict detection).
+## "Looks Done But Isn't" Checklist
 
----
+- [ ] **GitHub Issues sync:** Often missing the "update existing issue" path -- verify that running `sync-issues` twice produces zero new issues on second run
+- [ ] **GitHub Issues sync:** Often missing label creation before issue creation -- verify that `branchos:<feature-id>` labels are created first
+- [ ] **GitHub Issues sync:** Often missing error handling for unauthenticated `gh` -- verify clear error when `gh auth status` fails
+- [ ] **PR-FAQ ingestion:** Often missing frontmatter validation -- verify that malformed YAML frontmatter produces a helpful error, not a crash or silent data loss
+- [ ] **PR-FAQ ingestion:** Often missing encoding handling -- verify UTF-8 with special characters (accented names, em dashes) works
+- [ ] **Feature registry:** Often missing the link back from workstream to feature -- verify that `workstream create --feature X` stores `featureId` in `meta.json` AND that context assembly includes feature acceptance criteria
+- [ ] **Feature registry:** Often missing the `status` lifecycle -- verify that workstream completion updates feature status
+- [ ] **Roadmap generation:** Often missing dependency validation -- verify that circular dependencies in features are detected and reported
+- [ ] **Schema migration:** Often missing migration tests for existing v1 workstreams -- verify that a real v1 `state.json` with active phases migrates cleanly to v3 with new fields defaulted
+- [ ] **Context assembly:** Often missing feature context in the packet -- verify that when a workstream has a linked feature, the acceptance criteria appear in the context output
+- [ ] **Slash command installation:** Often missing project-level command support -- verify commands work from `.claude/commands/` in the project root (not just global `~/.claude/commands/`)
+- [ ] **Slash command content:** Often missing `$ARGUMENTS` passthrough -- verify new slash commands accept and use arguments
 
-### Pitfall 12: CLAUDE.md vs Slash Commands Confusion
+## Recovery Strategies
 
-**What goes wrong:** PROJECT.md explicitly says "not CLAUDE.md injection" but developers using BranchOS will also have their own CLAUDE.md files. BranchOS context and CLAUDE.md context may conflict, contradict, or duplicate information. Users won't know which context source is authoritative.
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Duplicate GitHub Issues created | LOW | Search and close duplicates manually on GitHub; add dedup logic with label-based matching; re-run sync |
+| PR-FAQ parser breaks on real input | LOW | Fix parser, re-ingest PR-FAQ; no data loss since PR-FAQ.md is the source document |
+| Roadmap refresh overwrites manual edits | MEDIUM | Recover edits from `git diff HEAD~1 -- .branchos/shared/ROADMAP.md`; redesign refresh to use proposed-file pattern |
+| Schema migration corrupts state files | HIGH | Restore from git (`git checkout HEAD~1 -- .branchos/`); add migration dry-run mode that validates without writing; snapshot state before migration |
+| Feature status drift between local and GitHub | LOW | Accept it as expected behavior; document that local files are authoritative for BranchOS, GitHub is authoritative for team discussion |
+| Slash commands break after Claude Code update | MEDIUM | Check Claude Code changelog for breaking changes; update install targets; CLI commands still work as fallback |
+| Feature file schema has no version field | HIGH | Requires touching every feature file to add `schemaVersion`; prevent by including it from day one |
 
-**Prevention:**
-1. Document clearly how BranchOS context relates to CLAUDE.md
-2. BranchOS context packets should never contradict standard CLAUDE.md patterns
-3. Consider reading CLAUDE.md as input to avoid duplication
-4. Context packets should identify themselves as BranchOS-provided
+## Pitfall-to-Phase Mapping
 
-**Phase mapping:** Phase 2 (context assembly).
-
----
-
-### Pitfall 13: Assuming Linear Branch Workflows
-
-**What goes wrong:** BranchOS assumes one workstream per branch and one branch per workstream. Real workflows include: stacked PRs (branch off a branch), shared feature branches where multiple developers commit, hotfix branches created from release tags, and developers who work on multiple things in one branch.
-
-**Prevention:**
-1. Don't enforce 1:1 branch-workstream mapping -- allow `--name` override to decouple
-2. Support creating a workstream without a branch (for pre-planning)
-3. Don't break when a branch has multiple workstreams or a workstream spans branches
-4. Document supported workflows explicitly
-
-**Phase mapping:** Phase 1 (workstream identity model).
-
----
-
-## Phase-Specific Warnings
-
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| State format design | Merge-hostile JSON structure (Pitfall 1) | Design for merge-friendliness: stable keys, avoid arrays, one file per concern |
-| Workstream identity | Branch name as directory key (Pitfall 2) | Use stable IDs for storage, branch name for display only |
-| Schema design | No version field (Pitfall 7) | Add `schemaVersion` to every file from v1 |
-| Codebase mapping | Stale maps go undetected (Pitfall 3) | Include file tree hash in map metadata |
-| Context assembly | Context packets too large (Pitfall 4) | Budget tokens per layer, summarize older phases |
-| Claude Code integration | Hard coupling to slash commands (Pitfall 5) | Adapter layer, fallback to stdout/clipboard |
-| Conflict detection | Over-engineering edge cases (Pitfall 11) | Start with simple path matching, iterate from user feedback |
-| Archival | Lost decisions (Pitfall 8) | Promote key decisions to shared layer |
-| Distribution | npm global install failures (Pitfall 9) | Support npx, test across platforms |
-| Testing | Git-dependent tests are slow/flaky (Pitfall 10) | Separate pure logic from git operations |
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| PR-FAQ parsing brittleness | PR-FAQ ingestion (Phase 1) | Test with 3+ differently-formatted PR-FAQ documents including one written by a non-developer |
+| Schema migration complexity | Foundation/PR-FAQ (Phase 1) | All new file types have `schemaVersion` in frontmatter; reuse `migrateIfNeeded` pattern |
+| Roadmap refresh destroys edits | Roadmap generation (Phase 2) | Test: generate, manually edit, refresh, verify edits preserved or proposed-file created |
+| Feature registry staleness / source of truth | Feature registry (Phase 3) | Feature file is the only place status changes; no GitHub-to-local sync code exists |
+| GitHub Issues duplication | GitHub Issues sync (Phase 4) | Integration test: run sync twice, assert zero new issues on second run |
+| Feature-workstream linking gaps | Feature-aware workstreams (Phase 5) | Verify `featureId` in `meta.json` AND acceptance criteria in context packet output |
+| Context assembly bloat from features | Enhanced context (Phase 5/6) | Measure context packet size with 20+ feature files; verify only the relevant feature is included |
+| Slash command migration breakage | Every phase (cross-cutting constraint) | All new features have both CLI command and slash command; CLI prints deprecation notice, not error |
+| Slash commands vs skills directory | Installation (Phase 1 or dedicated) | Test install to both `commands/` and `skills/` directories; test with Claude Code 2.1.3+ |
+| Single source of truth for feature status | Feature registry + GitHub sync phases | Audit: grep codebase for all places that write to feature status field; must be exactly one code path |
 
 ## Sources
 
-- Domain expertise from Terraform state management patterns (state file merge conflicts are the canonical example of this problem class)
-- Git merge driver documentation and `.gitattributes` patterns
-- npm global install pain points are extensively documented in Node.js ecosystem (nvm, volta, fnm compatibility)
-- Claude Code slash command integration is based on current Claude Code documentation (subject to change -- this is the core risk of Pitfall 5)
+- Codebase analysis: `src/state/schema.ts` (existing migration system), `src/state/meta.ts` (WorkstreamMeta interface), `src/context/assemble.ts` (AssemblyInput with 14 fields), `src/cli/install-commands.ts` (slash command content as string literals)
+- [GitHub CLI `gh issue list` documentation](https://cli.github.com/manual/gh_issue_list) -- search and filter capabilities
+- [GitHub CLI `gh issue create` documentation](https://cli.github.com/manual/gh_issue_create) -- no built-in deduplication
+- [Claude Code skills documentation](https://code.claude.com/docs/en/skills) -- unified commands/skills system
+- [Claude Code slash commands to skills merge (v2.1.3, January 2026)](https://medium.com/@joe.njenga/claude-code-merges-slash-commands-into-skills-dont-miss-your-update-8296f3989697) -- backwards compatible
+- [SSW Frontmatter best practices](https://www.ssw.com.au/rules/best-practices-for-frontmatter-in-markdown) -- YAML frontmatter formatting
+- [Idempotent REST API design patterns](https://restfulapi.net/idempotent-rest-apis/) -- deduplication strategies
+- Prior v1 pitfalls research (2026-03-07) -- git merge conflicts, orphaned state, context explosion pitfalls remain relevant
 
-**Confidence note:** These pitfalls are derived from well-understood patterns in git-committed state management, CLI tool distribution, and AI context assembly. The specific BranchOS design decisions in PROJECT.md (committed artifacts, branch-derived IDs, slash command integration) map directly to known failure modes. HIGH confidence on pitfalls 1, 2, 4, 7, 9, 10. MEDIUM confidence on pitfalls 3, 5 (dependent on Claude Code's evolution). HIGH confidence on pitfalls 6, 8, 11, 12, 13 (standard patterns).
+---
+*Pitfalls research for: BranchOS v2.0 project-level planning layer*
+*Researched: 2026-03-09*

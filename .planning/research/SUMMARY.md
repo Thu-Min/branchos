@@ -1,181 +1,165 @@
 # Project Research Summary
 
-**Project:** BranchOS
-**Domain:** CLI developer workflow tool -- git-based team coordination for AI-assisted coding
-**Researched:** 2026-03-07
-**Confidence:** MEDIUM
+**Project:** BranchOS v2 — Project-Level Planning Layer
+**Domain:** CLI developer workflow tool for AI-assisted development
+**Researched:** 2026-03-09
+**Confidence:** HIGH
 
 ## Executive Summary
 
-BranchOS is a CLI-first developer workflow tool that enables teams to coordinate AI-assisted coding through git-committed, branch-scoped state. It fills a clear gap: existing AI coding tools (Aider, Cursor, Continue) are single-developer and session-scoped, while existing workflow tools (GSD) break under concurrent team use. The opportunity is structured, persistent, team-aware context management that uses git itself as the coordination layer -- no server, no dashboard, no real-time sync.
+BranchOS v2 adds a project-level planning layer on top of the shipping v1 workstream engine. The core flow is: Product Owner writes a PR-FAQ document, BranchOS ingests it, AI generates a structured roadmap with milestones and feature files, features optionally sync to GitHub Issues, and developers create feature-aware workstreams that inject acceptance criteria into context packets. This is a well-scoped extension -- the existing two-layer state model (shared + workstream) accommodates all new features by adding files to shared state and optional fields to workstream metadata.
 
-The recommended approach is a lean TypeScript CLI built on Commander.js, with file-based JSON/Markdown state committed to a `.branchos/` directory. Context is assembled as structured markdown packets and delivered to Claude Code via slash commands (with a fallback stdout mode). The architecture follows a clean layered pattern: types and utilities at the base, git and state management in the middle, business logic (context assembly, conflict detection) above that, and thin CLI commands on top. This layering enables testing pure logic without git dependencies and allows the Claude Code integration surface to be swapped without rewriting core functionality.
+The recommended approach is minimal: one new runtime dependency (gray-matter for YAML frontmatter parsing), GitHub integration via `gh` CLI shell-out (not Octokit), and the same patterns proven in v1 -- JSON for machine state, markdown for human content, slash commands as the AI-driven UX layer. The architecture separates feature state (JSON) from feature content (markdown), which is the single most important structural decision because it avoids the fragile pattern of parsing markdown for programmatic queries.
 
-The primary risks are merge conflicts in machine-generated state files (the Terraform state problem), orphaned workstream state when branches are renamed or deleted, and context packet size explosion degrading AI quality. All three are preventable with upfront design decisions: merge-friendly file formats with stable keys, stable workstream IDs decoupled from branch names, and token budgeting for context layers. The slash command integration with Claude Code is an additional strategic risk since that API surface is not formally versioned -- an adapter pattern is essential.
+The primary risks are: (1) roadmap refresh destroying manual edits -- mitigate by generating proposed changes for review rather than blind overwrite, (2) GitHub Issues sync creating duplicates -- mitigate by storing issue numbers locally and using tool-controlled labels for deduplication, and (3) slash-command migration stranding users -- mitigate by keeping CLI commands working with deprecation warnings rather than removing them. All three risks have clear prevention strategies that must be built into the initial design, not bolted on later.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack is deliberately minimal: four production dependencies (Commander.js, simple-git, Zod, chalk) plus standard Node.js built-ins for file I/O. TypeScript in strict mode with ESM throughout. tsup for bundling, Vitest for testing. All choices prioritize reliability and small dependency footprint over framework features.
+The existing stack (Node.js 20+, TypeScript 5.5, Commander, simple-git, chalk, tsup, vitest) is unchanged. v2 adds exactly one runtime dependency.
 
-**Core technologies:**
-- **TypeScript ^5.5 + Node.js >=20:** Language and runtime. Strict mode, ESM, `NodeNext` module resolution.
-- **Commander.js ^13:** CLI framework. Lightweight subcommand support with strong TypeScript types. Preferred over oclif (too heavy) and yargs (weaker TS).
-- **simple-git ^3.27:** Git operations wrapper. Promise-based, well-typed. Architecture research recommends raw `child_process.execFile` instead for fewer dependencies -- this is a decision to resolve in Phase 1.
-- **Zod ^3.23:** Schema validation for state files. Single source of truth for types and runtime validation. Critical for catching state corruption.
-- **tsup ^8:** Bundles TypeScript to single ESM file with shebang. Much simpler than raw esbuild config.
-- **chalk ^5.3:** Terminal colors. Standard, lightweight.
+**Core additions:**
+- **gray-matter** (^4.0.3): YAML frontmatter parsing for PR-FAQ, roadmap, and feature files -- battle-tested (Astro, VitePress, Gatsby), CJS-compatible with tsup build
+- **`gh` CLI** (external tool, not npm dep): GitHub Issues CRUD via subprocess -- zero new npm deps, auth handled by `gh auth`, JSON output for structured parsing
+- **Node.js `crypto`** (built-in): SHA-256 content hashing for PR-FAQ change detection
 
-**Stack conflict to resolve:** STACK.md recommends simple-git; ARCHITECTURE.md recommends raw `child_process.execFile` wrappers and lists simple-git as an anti-pattern. Recommendation: start with simple-git for faster initial development, plan to evaluate whether the abstraction justifies the dependency after Phase 1. The git operation surface area (branch, diff, log, status) is small enough that either approach works.
+**Deliberately excluded:** Octokit (15+ transitive deps, duplicates `gh`), remark/unified (30+ deps for AST parsing not needed), Zod (inconsistent with v1 patterns), file watchers, interactive prompt libraries, template engines.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Workstream isolation (two-layer shared + workstream model)
-- Branch-aware context auto-detection
-- Codebase mapping/indexing (shared, persistent)
-- Structured workflow phases (discuss/plan/execute)
-- Progress tracking via machine-readable state
-- Workstream lifecycle (create, work, complete, archive)
-- Git-committed state for async team coordination
-- Context assembly for Claude Code integration
-- CLI installability via npm
+**Must have (v2.0 launch):**
+- PR-FAQ ingestion -- read PO-authored markdown, store with content hash
+- Roadmap generation -- AI reads PR-FAQ, outputs milestones + feature files
+- Feature registry -- one JSON + one markdown file per feature, status lifecycle
+- Feature-aware workstream creation -- `--feature <id>` pre-loads context
+- Enhanced context assembly -- acceptance criteria in context packets
+- Slash command migration -- all v1 CLI commands available as `/branchos:*`
 
-**Should have (differentiators):**
-- Cross-workstream conflict detection (file-level) -- biggest differentiator, no competitor does this
-- Shared repo knowledge layer (persisted across sessions, unlike Cursor/Aider)
-- Phase-specific context injection (different context for different workflow stages)
-- Git-aware plan reconciliation (diff commits against plan)
-- Staleness detection for codebase map
+**Should have (v2.x after validation):**
+- GitHub Issues sync -- push features to Issues via `gh` CLI
+- Roadmap refresh -- detect PR-FAQ changes, propose roadmap updates
 
-**Defer to v2+:**
-- Workstream templates (low complexity but not core)
-- Module-level conflict detection (high complexity, uncertain value)
-- All anti-features: web dashboard, real-time collaboration, issue tracker integration, PR automation, editor plugins, multi-repo orchestration
+**Defer (v3+):**
+- Bidirectional issue sync (state reconciliation complexity)
+- Cross-milestone dependency visualization
+- Multi-repo roadmaps
+- Web dashboard
 
 ### Architecture Approach
 
-The architecture is a layered CLI with three runtime contexts (direct CLI, slash command invocation, git hooks) converging on shared internal modules. State lives in `.branchos/` with a two-tier structure: `shared/` for repo-wide context and `workstreams/<id>/` for branch-scoped state. The critical design pattern is context assembly as a pure function -- given shared state, workstream state, and git info, it produces a markdown string with no side effects, making it independently testable.
+The architecture extends v1's two-layer state model. Shared state gains PR-FAQ.md, ROADMAP.md, and a `features/` directory with dual-file storage (JSON for state, markdown for content). Workstream meta gains optional `featureId` and `issueNumber` fields via schema v2-to-v3 migration. New slash commands follow the established pattern where Claude Code executes step-by-step instructions, reading/writing `.branchos/` files directly. The CLI remains the engine; slash commands are the UX layer.
 
 **Major components:**
-1. **Git Layer** -- thin wrapper around git binary for branch detection, diffs, commit counting
-2. **State Manager** -- all `.branchos/` file I/O, schema validation via Zod, directory structure enforcement
-3. **Context Assembler** -- pure function that merges shared + workstream + git state into a markdown context packet
-4. **Workstream Lifecycle** -- create, list, archive workstreams; resolve workstream from current branch
-5. **Codebase Mapper** -- repo structure analysis, produces shared codebase map
-6. **Conflict Detector** -- reads all active workstreams, flags file-level overlaps
-7. **Slash Command Templates** -- thin markdown files in `.claude/commands/` that shell out to the CLI
+1. **Project Layer** (`src/project/`) -- PR-FAQ ingestion, hash-based change detection, roadmap read helpers
+2. **Feature Registry** (`src/feature/`) -- CRUD operations, status lifecycle (unassigned/assigned/in-progress/complete), type definitions
+3. **GitHub Issues Module** (`src/github/`) -- thin `gh` CLI wrapper, issue create/update/list, graceful degradation when `gh` unavailable
+4. **Enhanced Context Assembly** -- extends existing `AssemblyInput` with feature spec, acceptance criteria, milestone context; only loads the linked feature (not all features)
 
 ### Critical Pitfalls
 
-1. **Merge conflicts in state files** -- Design JSON state with stable object keys (not arrays), one file per concern, and append-only patterns. Shared codebase map should use a regenerate-from-scratch model where "take theirs" resolves conflicts. Must be addressed in Phase 1 state format design.
-
-2. **Orphaned workstream state** -- Branch names are mutable but used as directory identifiers. Use a stable workstream ID (short hash or sequential) for storage, branch name for display only. Record initial commit SHA as anchor. Must be decided in Phase 1.
-
-3. **Context packet explosion** -- Context grows unbounded across layers. Set hard token budgets per layer, summarize older phases instead of including raw artifacts, add a context manifest. Storage format in Phase 1 must enable this.
-
-4. **Slash command integration fragility** -- Claude Code's slash command API is not versioned. Build an adapter layer so context packets are plain text/markdown deliverable via slash command, stdout, or clipboard. Design this abstraction in Phase 1.
-
-5. **Schema evolution without versioning** -- Include `schemaVersion` in every state file from the first version. Implement forward-compatible reading and automatic migrations. Phase 1 requirement.
+1. **GitHub Issues duplication on re-run** -- Store issue number in feature JSON after creation; use `branchos:<feature-id>` labels for deduplication; never match by title
+2. **Roadmap refresh destroys manual edits** -- Generate to proposed file or show diff for approval; separate machine-managed structure from human prose; design refresh strategy alongside initial generation
+3. **PR-FAQ parsing brittleness** -- Do not parse PR-FAQ body with regex; pass entire content to AI for roadmap generation; use frontmatter only for metadata; validate gracefully with warnings
+4. **Feature registry state drift** -- Feature files are the single source of truth for BranchOS; GitHub Issues are a projection, not the authority; do not build bidirectional sync
+5. **Slash command migration breaks existing users** -- Keep CLI commands working with deprecation warnings; slash commands shell out to CLI (not replace it); support both `commands/` and `skills/` directories
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-### Phase 1: Foundation and State Model
-**Rationale:** Everything depends on the state format and git integration layer. Getting these wrong requires a rewrite. Three of five critical pitfalls (merge conflicts, orphaned state, schema versioning) must be solved here.
-**Delivers:** CLI scaffolding, git layer, state manager with Zod schemas, workstream CRUD, `.branchos/` directory structure, basic branch detection
-**Addresses:** Workstream isolation, branch-aware context, workstream lifecycle, CLI installability, git integration
-**Avoids:** Pitfalls 1 (merge-hostile state), 2 (branch-name-as-ID), 7 (no schema version), 9 (npm install pain), 10 (untestable git-dependent code)
-**Key decisions:** Stable workstream ID strategy, state file structure for merge-friendliness, simple-git vs raw child_process
+### Phase 1: Foundation and PR-FAQ Ingestion
+**Rationale:** Everything depends on feature types and the schema migration. PR-FAQ ingestion is the entry point of the entire workflow and has no upstream dependencies.
+**Delivers:** Feature type definitions, schema v2-to-v3 migration, constants, PR-FAQ read/hash module, `/branchos:discuss-project` slash command
+**Addresses:** PR-FAQ ingestion (table stakes), schema migration infrastructure
+**Avoids:** Schema migration nightmare (Pitfall 6) by establishing patterns all subsequent phases reuse; PR-FAQ parsing brittleness (Pitfall 2) by using frontmatter for metadata and passing body to AI unstructured
 
-### Phase 2: Codebase Mapping and Shared Context
-**Rationale:** Shared context layer is a prerequisite for context assembly (Phase 3). Codebase mapping is the foundation of the tool's AI value. Depends on state manager from Phase 1.
-**Delivers:** Codebase mapper, shared context storage, staleness detection metadata, conventions storage
-**Addresses:** Codebase mapping/indexing, shared repo knowledge layer, staleness detection foundations
-**Avoids:** Pitfall 3 (stale context) by including tree hash in metadata from the start, Pitfall 6 (race conditions) by using regenerate-from-scratch model
+### Phase 2: Roadmap Generation and Feature Registry
+**Rationale:** Roadmap generation consumes PR-FAQ (Phase 1 output) and produces feature files. Feature registry CRUD must exist for features to be created. These are tightly coupled -- the roadmap command creates feature files.
+**Delivers:** Feature registry module (CRUD, lifecycle), roadmap helpers, `/branchos:plan-roadmap` slash command, `branchos features` CLI command
+**Addresses:** Roadmap generation (table stakes), feature registry (table stakes), feature status tracking
+**Avoids:** Feature registry staleness (Pitfall 5) by making feature files the single source of truth from day one; roadmap refresh edit destruction (Pitfall 3) by designing the refresh strategy now even if implementation is deferred
 
-### Phase 3: Workflow Phases and Progress Tracking
-**Rationale:** Structured phases are table stakes and a prerequisite for phase-specific context injection. Depends on state manager (Phase 1) and informs context assembly design.
-**Delivers:** Multi-phase workstream lifecycle (discuss/plan/execute), phase progression commands, progress tracking, phase artifacts storage
-**Addresses:** Structured workflow phases, progress tracking, workstream-scoped decision log
-**Avoids:** Pitfall 4 (context explosion) by establishing clear phase boundaries that enable later summarization
+### Phase 3: Feature-Aware Workstreams and Context Enhancement
+**Rationale:** Depends on feature registry (Phase 2). This phase connects the planning layer to the execution layer -- the core value integration.
+**Delivers:** `--feature <id>` flag on workstream creation, enhanced `AssemblyInput` with feature context, acceptance criteria in execute-step context packets
+**Addresses:** Feature-aware workstream creation (table stakes), enhanced context assembly (table stakes)
+**Avoids:** Context assembly bloat (load only linked feature, not all features); feature-workstream linking gaps (store featureId in meta.json AND verify it flows through to context output)
 
-### Phase 4: Context Assembly and Claude Code Integration
-**Rationale:** This is the highest-value feature -- the reason teams adopt BranchOS. Requires all three prior phases. Context assembly is a pure function over the data structures built in Phases 1-3.
-**Delivers:** Context packet assembler, slash command templates, token budgeting, phase-specific context injection, fallback stdout mode
-**Addresses:** Context assembly for AI, phase-specific context injection, async team coordination
-**Avoids:** Pitfall 4 (context explosion) with token budgets, Pitfall 5 (slash command fragility) with adapter layer
+### Phase 4: GitHub Issues Sync
+**Rationale:** Depends on feature registry (Phase 2). Deferred from v2.0 launch because teams need to validate the feature registry format before pushing to GitHub. Can ship as v2.1.
+**Delivers:** GitHub issues module, `/branchos:sync-issues` slash command, dry-run mode, idempotent create/update
+**Addresses:** GitHub Issues creation (should-have)
+**Avoids:** Issue duplication (Pitfall 1) by using stored issue numbers and tool-controlled labels; security exposure by defaulting to dry-run for public repos
 
-### Phase 5: Team Coordination Features
-**Rationale:** Conflict detection and team overview are differentiators but depend on multiple workstreams existing (Phases 1-3). Plan reconciliation requires structured plans from Phase 3 and git diffing from Phase 1.
-**Delivers:** File-level conflict detection, workstream status overview, plan reconciliation, workstream archival
-**Addresses:** Cross-workstream conflict detection, workstream status overview, git-aware plan reconciliation, workstream archival
-**Avoids:** Pitfall 8 (lost context on archival) by promoting decisions to shared layer, Pitfall 11 (over-engineering conflict detection) by shipping simple path matching first
+### Phase 5: Roadmap Refresh
+**Rationale:** The hardest feature. Depends on all prior phases. Deferred to v2.x because it requires solving the "preserve manual edits" problem, which benefits from observing how teams actually use feature files.
+**Delivers:** `/branchos:refresh-roadmap` slash command, PR-FAQ diff detection, proposed-roadmap review workflow
+**Addresses:** Roadmap refresh (should-have)
+**Avoids:** Edit destruction (Pitfall 3) by generating proposed changes, not overwriting
 
-### Phase 6: Polish and Distribution
-**Rationale:** Final hardening before public release. Branch-switch prompts, templates, and distribution refinements.
-**Delivers:** Branch-switch prompt, workstream templates, npx support, `branchos doctor` command, `branchos repair` command
-**Addresses:** Branch-switch prompt, workstream templates, npm distribution hardening
-**Avoids:** Pitfall 9 (npm install failures) with npx fallback and cross-platform CI testing
+### Phase 6: Slash Command Migration and Polish
+**Rationale:** Independent of planning features but should happen after new commands are stable so the migration establishes the final command set. Cross-cutting constraint: new v2 commands should have both CLI and slash command interfaces from the start.
+**Delivers:** All v1 CLI commands as `/branchos:*` slash commands, deprecation warnings on old CLI paths, `/branchos:help` command, support for both `commands/` and `skills/` directories
+**Addresses:** Slash-command-only architecture (differentiator)
+**Avoids:** Migration breakage (Pitfall 4) by keeping CLI working with deprecation notices
 
 ### Phase Ordering Rationale
 
-- Phases 1-3 follow the strict dependency chain identified in both FEATURES.md and ARCHITECTURE.md: git layer -> state -> shared context -> phases -> context assembly
-- Phase 4 (context assembly) is intentionally separated from Phase 3 (phases) because it is the most complex integration point and benefits from stable inputs
-- Phase 5 (team features) is deferred until after single-developer flow works end-to-end -- validate the core loop before adding coordination
-- Phase 6 collects low-risk polish items that don't block core functionality
+- **Dependency chain drives order:** PR-FAQ -> Roadmap/Features -> Workstream Integration -> GitHub Sync -> Refresh. Each phase produces artifacts the next phase consumes.
+- **Value delivery is incremental:** After Phase 3, teams can go from PR-FAQ to executing feature-aware workstreams. Phases 4-5 are enhancements, not prerequisites.
+- **Hardest features are last:** Roadmap refresh (Phase 5) and GitHub sync (Phase 4) have the most integration complexity and benefit from real usage data.
+- **Slash command migration is orthogonal:** It can progress in parallel but should finalize after the command set is stable.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 1:** Workstream identity model needs concrete design -- the branch-name vs stable-ID tradeoff has UX implications that need prototyping
-- **Phase 2:** Codebase mapping strategy needs research into what makes a useful AI-consumable repo summary (token-efficient, actionable)
-- **Phase 4:** Claude Code slash command integration surface needs verification against current Claude Code version; documentation may have evolved since training data cutoff
+- **Phase 2 (Roadmap Generation):** The AI generation quality is the product's core value. Needs research into prompt structure, output format, and how to constrain Claude to produce consistent feature file schemas.
+- **Phase 5 (Roadmap Refresh):** Merge semantics for AI-generated vs human-edited content is an unsolved UX problem. Needs research into diff strategies and the proposed-file review pattern.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 3:** Workflow phases are a well-understood state machine pattern
-- **Phase 5:** File-level conflict detection is straightforward set intersection on file paths
-- **Phase 6:** npm distribution and CLI polish are thoroughly documented
+- **Phase 1 (Foundation/PR-FAQ):** Well-documented patterns -- frontmatter parsing with gray-matter, SHA-256 hashing, schema migration chain extension. No unknowns.
+- **Phase 3 (Feature-Aware Workstreams):** Direct extension of existing workstream creation and context assembly. The codebase already demonstrates the pattern.
+- **Phase 4 (GitHub Issues Sync):** `gh` CLI is well-documented, JSON output is stable, deduplication strategy is clear from research.
+- **Phase 6 (Slash Command Migration):** Existing `install-commands.ts` pattern extends naturally. The only nuance is `commands/` vs `skills/` directory support.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | Core choices are solid but exact versions need npm registry verification. simple-git vs raw git decision unresolved. |
-| Features | MEDIUM-HIGH | Feature landscape is well-mapped. Competitor analysis based on training data (early 2025), competitors may have evolved. |
-| Architecture | HIGH | Layered CLI architecture is a proven pattern. Data flow is clear. Build order is well-reasoned. |
-| Pitfalls | HIGH | Pitfalls map directly to known failure modes (Terraform state, npm distribution, git-committed state). Well-documented problem space. |
+| Stack | HIGH | Existing stack is proven; gray-matter is battle-tested; `gh` CLI is well-documented. Only one new dependency. |
+| Features | MEDIUM-HIGH | Feature set is clear from vision doc and competitor analysis. Roadmap generation quality (AI output) is the main uncertainty. |
+| Architecture | HIGH | Direct extension of v1 patterns confirmed by codebase analysis. Dual-file feature storage and subprocess shell-out are established patterns. |
+| Pitfalls | HIGH | Pitfalls identified from GitHub API documentation, codebase analysis, and v1 experience. Prevention strategies are concrete. |
 
-**Overall confidence:** MEDIUM -- strong on architecture and pitfalls, needs version verification for stack, and Claude Code integration surface needs runtime validation.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **simple-git vs raw child_process:** STACK.md and ARCHITECTURE.md disagree. Resolve during Phase 1 planning by evaluating the actual git operation surface area needed.
-- **npm package versions:** All version numbers are from training data (May 2025 cutoff). Run `npm view <package> version` before project initialization.
-- **Claude Code slash command API:** Integration approach is based on training data. Verify current slash command behavior, `$ARGUMENTS` interpolation, and `$(shell)` support before Phase 4.
-- **Zod 4 status:** Zod 4 may be released or in RC. Check whether to target Zod 3 or 4 before Phase 1.
-- **Token budget sizing:** No empirical data on how large context packets can be before Claude Code quality degrades. Needs experimentation in Phase 4.
-- **Large repo performance:** Codebase mapping on repos with 10K+ files is untested. May need streaming or sampling strategies in Phase 2.
+- **AI roadmap generation quality:** No research on prompt engineering for consistent feature file output. Phase 2 planning should include prompt prototyping and output validation.
+- **Claude Code skills/commands directory migration:** The v2.1.3 merge is documented but not tested with BranchOS's install pattern. Phase 6 should verify both paths early.
+- **Slash command content as string literals:** PITFALLS.md flags the current pattern (500+ line template literals in `install-commands.ts`) as technical debt. Need to decide whether to move to separate `.md` files loaded at install time before adding 4-5 new commands.
+- **`AssemblyInput` interface growth:** Currently 14 fields, adding 4 more. PITFALLS.md suggests grouping into a `FeatureContext` sub-object. Decide during Phase 3 planning.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- GSD architecture and implementation patterns (direct domain knowledge)
-- Commander.js, npm `bin` field distribution (established, well-documented patterns)
-- Git merge conflict patterns from Terraform state management domain
-- CLI tool design principles and Node.js ecosystem patterns
+- Existing BranchOS codebase: `src/context/assemble.ts`, `src/state/schema.ts`, `src/state/meta.ts`, `src/cli/install-commands.ts`, `src/workstream/create.ts`
+- `.planning/v2-VISION.md` -- product direction and design decisions
+- [GitHub CLI documentation](https://cli.github.com/manual/) -- `gh issue create`, `gh issue list`, `--json` output
+- [Node.js crypto documentation](https://nodejs.org/api/crypto.html) -- createHash API
+- [gray-matter GitHub](https://github.com/jonschlinkert/gray-matter) -- API, adoption, compatibility
 
 ### Secondary (MEDIUM confidence)
-- Aider, Cursor, Continue feature sets (training data through early 2025)
-- Claude Code slash command integration patterns (subject to API evolution)
-- Package versions from training data (May 2025 cutoff)
+- [CCPM](https://github.com/automazeio/ccpm) -- competitor analysis, PRD-to-epic pipeline
+- [APM](https://github.com/sdi2200262/agentic-project-management) -- competitor analysis, multi-agent patterns
+- [Amazon PR-FAQ methodology](https://workingbackwards.com/resources/working-backwards-pr-faq/) -- document structure
+- [npm trends](https://npmtrends.com/front-matter-vs-gray-matter) -- frontmatter library comparison
+- [Claude Code skills merge](https://medium.com/@joe.njenga/claude-code-merges-slash-commands-into-skills-dont-miss-your-update-8296f3989697) -- commands/skills directory compatibility
 
 ### Tertiary (LOW confidence)
-- @clack/prompts version and API stability (approximate, needs verification)
-- Exact latest versions of all npm packages (need `npm view` verification)
+- None -- all findings corroborated by multiple sources or direct codebase analysis
 
 ---
-*Research completed: 2026-03-07*
+*Research completed: 2026-03-09*
 *Ready for roadmap: yes*

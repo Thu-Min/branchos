@@ -1,229 +1,258 @@
-# Technology Stack
+# Stack Research
 
-**Project:** BranchOS
-**Researched:** 2026-03-07
-**Overall confidence:** MEDIUM (versions unverified against npm registry -- WebSearch, Bash, and WebFetch were unavailable during research; recommendations are based on deep ecosystem knowledge but exact latest versions should be confirmed before `npm init`)
+**Domain:** CLI tool - project planning layer additions (PR-FAQ, roadmap, feature registry, GitHub Issues sync)
+**Researched:** 2026-03-09
+**Confidence:** HIGH
 
-## Recommended Stack
+## Existing Stack (DO NOT CHANGE)
 
-### Core Language & Runtime
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Node.js | >=20 | Runtime |
+| TypeScript | ^5.5.0 | Type safety |
+| Commander | ^12.1.0 | CLI framework |
+| simple-git | ^3.27.0 | Git operations |
+| chalk | ^4.1.2 | Terminal output (CJS-compatible v4) |
+| tsup | ^8.3.0 | Build (CJS output) |
+| vitest | ^3.0.0 | Testing |
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| TypeScript | ^5.5 | Language | Project constraint. Strict mode (`strict: true`) from day one. Use `NodeNext` module resolution for ESM compatibility. | HIGH (well-established, version range is safe) |
-| Node.js | >=20 | Runtime | LTS. Native ESM support, stable `fs/promises`, `node:` protocol. v20 is LTS until April 2026; v22 is current LTS. Set `engines` in package.json. | HIGH |
+The existing stack is validated and shipping. v2 adds a project-level planning layer on top. This document covers ONLY what changes.
 
-### CLI Framework
+## Recommended Additions
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| Commander.js | ^13.0 | Argument parsing, subcommands | The standard for TypeScript CLIs. BranchOS needs subcommands (`branchos map-codebase`, `branchos workstream create`, etc.) which Commander handles cleanly. Lightweight (~30KB), zero dependencies, excellent TypeScript types. More appropriate than oclif (too heavy for this scope) or yargs (weaker TS support). | MEDIUM (v12 confirmed in training data, v13 likely by now) |
+### New Runtime Dependency: gray-matter
 
-**Why not alternatives:**
-- **oclif**: Designed for Salesforce-scale CLIs with plugin systems, code generation, and heavy abstractions. BranchOS is a focused tool, not a plugin platform. oclif's overhead (110+ dependencies) is unjustified.
-- **yargs**: Weaker TypeScript support, less intuitive subcommand model, API surface is sprawling. Commander's `.command()` chaining maps directly to BranchOS's command structure.
-- **citty/unbuild (unjs)**: Promising but immature ecosystem. Lower adoption, fewer battle-tested patterns. Risk of API changes.
-- **clipanion**: Good TS support but niche adoption. Commander's ecosystem is 10x larger.
-- **meow**: Too minimal -- no built-in subcommand support.
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| gray-matter | ^4.0.3 | YAML frontmatter parsing for markdown files | Battle-tested (used by Astro, VitePress, Gatsby, TinaCMS, Shopify Polaris). Parses frontmatter into structured data and separates content body. Exactly what is needed for PR-FAQ.md, ROADMAP.md, and feature registry files. |
 
-### Build & Compilation
+**What it does for BranchOS v2:**
+- Parse `PR-FAQ.md` frontmatter (version, lastModified, contentHash) + body content
+- Parse feature registry files (`features/<id>.md`) with structured metadata (id, milestone, status, issue number, acceptance criteria flags)
+- Parse `ROADMAP.md` frontmatter (version, milestones count)
+- Write structured markdown with frontmatter via `matter.stringify(content, data)`
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| tsup | ^8.0 | Bundle TypeScript to distributable JS | Wraps esbuild for fast builds with sensible defaults. Produces clean ESM or CJS output. Single `tsup.config.ts` file. Handles shebang insertion for CLI bins. Much simpler than raw esbuild config or webpack. | MEDIUM (v8 confirmed) |
+**Why gray-matter over alternatives:**
+- `front-matter` npm: Last published 6+ years ago, effectively abandoned
+- `remark-frontmatter`: Requires the entire unified/remark ecosystem (30+ transitive deps) for AST parsing BranchOS does not need. Remark is for transforming markdown ASTs; BranchOS just reads/writes structured markdown.
+- Custom YAML regex: Fragile, edge-case-prone, wastes time on a solved problem
+- gray-matter is CJS, which works with BranchOS's tsup CJS build output (`dist/index.cjs`)
 
-**Why not alternatives:**
-- **tsc only**: No bundling, produces many files, slower. Fine for libraries but CLIs benefit from single-file output.
-- **esbuild directly**: Requires manual configuration for TypeScript paths, shebangs, and declaration files. tsup wraps this cleanly.
-- **unbuild**: Less mature, fewer CLI-specific features.
-- **rollup**: Overkill configuration for a CLI tool.
-- **tsx (runtime)**: Good for development (`tsx watch`) but not for distribution. Use tsx for dev, tsup for build.
+**Integration pattern:**
+```typescript
+import matter from 'gray-matter';
 
-### Git Integration
+// Parse a feature file
+const raw = await readFile('.branchos/shared/features/auth-system.md', 'utf-8');
+const { data, content } = matter(raw);
+// data = { id: 'auth-system', milestone: 'M1', status: 'unassigned', issue: null }
+// content = markdown body with description, acceptance criteria, etc.
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| simple-git | ^3.27 | Programmatic git operations | The standard Node.js git library. Wraps git CLI (requires git installed, which is fine -- BranchOS users are developers). Promise-based API, good TypeScript types. Covers all BranchOS needs: branch detection, diff, log, status, commit detection for staleness. | MEDIUM (v3.x confirmed, patch version approximate) |
+// Write a feature file with frontmatter
+const output = matter.stringify(markdownBody, { id: 'auth-system', milestone: 'M1', status: 'assigned' });
+await writeFile('.branchos/shared/features/auth-system.md', output);
+```
 
-**Why not alternatives:**
-- **isomorphic-git**: Pure JS git implementation. Impressive but unnecessary -- BranchOS targets developer machines that always have git installed. isomorphic-git is slower for common operations and has a larger bundle.
-- **Raw `child_process.exec`**: Works but you'd rebuild error handling, output parsing, and promise wrapping that simple-git already provides. Not worth the maintenance cost.
-- **nodegit (libgit2 bindings)**: Native module with platform-specific compilation issues. Installation failures are common. simple-git's git CLI wrapper is more reliable across environments.
+### New Dev Dependency: @types/gray-matter
 
-### State Management (File-Based)
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| @types/gray-matter | latest | TypeScript type definitions | gray-matter does not ship built-in TS declarations. Required for type-safe usage. |
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| Node.js `fs/promises` | built-in | File I/O | Native, zero dependencies. `readFile`, `writeFile`, `mkdir` with `{ recursive: true }`. No library needed. | HIGH |
-| Zod | ^3.23 | Schema validation for state files | Validate `state.json` and config structures at read time. Catches corruption, provides clear error messages. Also generates TypeScript types from schemas (single source of truth). | MEDIUM (v3.23 confirmed, Zod 4 may be in beta/RC by now) |
+## Decisions: What NOT to Add (and Why)
 
-**Why not alternatives for validation:**
-- **JSON Schema (ajv)**: More verbose schema definitions, separate type generation step. Zod schemas ARE TypeScript -- tighter DX.
-- **io-ts**: Functional style that's less readable. Smaller ecosystem.
-- **No validation**: Tempting for a file-based tool but state corruption from manual edits or merge conflicts will happen. Catch it at read time with clear errors, not at runtime with cryptic failures.
+### GitHub Issues Sync: Use `gh` CLI, NOT @octokit/rest
 
-**State file format: JSON.** Not YAML, not TOML.
-- JSON is native to Node.js (`JSON.parse`/`JSON.stringify`).
-- `.branchos/` files are machine-managed, not hand-edited configs.
-- No dependency needed for parsing.
-- Git diffs are readable enough for JSON.
+**Decision: Shell out to `gh` CLI via `child_process`.**
 
-### Terminal UI & Output
+| Approach | Verdict | Rationale |
+|----------|---------|-----------|
+| `gh` CLI via child_process | USE THIS | Consistent with project architecture (slash commands already shell out). Zero new deps. Auth handled by `gh auth`. |
+| `@octokit/rest` | Do not use | Adds ~15 transitive deps. Requires token management. Duplicates `gh` functionality. Over-engineered for CRUD on issues. |
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| chalk | ^5.3 | Terminal colors | The standard. ESM-only since v5. Lightweight, well-typed. | MEDIUM (v5.3+ confirmed) |
-| @clack/prompts | ^0.9 | Interactive prompts (if needed) | Beautiful prompts with spinners. Used sparingly -- BranchOS is mostly non-interactive (slash command driven). Only needed for `branchos init` or confirmation dialogs. | LOW (version approximate, API may have changed) |
+**Why `gh` CLI fits BranchOS:**
+1. BranchOS already shells out to `git` via simple-git and to `npx` in slash commands -- this is an established pattern
+2. Users of a git workflow tool will have `gh` installed (or can install it trivially)
+3. The operations are simple CRUD: create issue, update issue, list issues, add labels, set milestones
+4. `gh` handles auth, rate limiting, and pagination automatically
+5. Failing gracefully when `gh` is not installed is straightforward (`which gh` check)
+6. JSON output from `gh --json` makes parsing trivial
 
-**Why not alternatives:**
-- **picocolors**: Faster than chalk but API is less ergonomic for complex formatting. Performance difference is irrelevant for a CLI that runs git commands.
-- **kleur**: Good but smaller ecosystem than chalk.
-- **inquirer**: Heavy, over-featured for BranchOS's minimal interactive needs. @clack/prompts is lighter and prettier.
-- **ora (spinners)**: @clack/prompts includes spinner functionality. If prompts aren't needed, ora is fine standalone for long operations like codebase mapping.
+**Integration pattern:**
+```typescript
+import { execSync } from 'child_process';
 
-### Testing
-
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| Vitest | ^3.0 | Test runner | Native TypeScript support, fast, compatible with Jest API. Works with ESM out of the box. Built-in coverage via v8. | MEDIUM (v2.x confirmed, v3 likely by now) |
-
-**Why not alternatives:**
-- **Jest**: Requires ts-jest or SWC transformer for TypeScript. ESM support is still awkward. Vitest is the modern default.
-- **node:test**: Built-in but limited assertion library, no watch mode sophistication, no coverage integration.
-
-### Linting & Formatting
-
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| ESLint | ^9.0 | Linting | Flat config format (eslint.config.js). Use `@typescript-eslint/eslint-plugin`. | MEDIUM |
-| Prettier | ^3.4 | Formatting | Opinionated, zero-config formatting. End formatting debates. | MEDIUM (v3.x confirmed) |
-
-### Package Distribution
-
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| npm (registry) | n/a | Distribution | Project constraint. `npm install -g branchos`. | HIGH |
-| changesets | ^2.27 | Version management | Manages changelogs and version bumps. Standard for npm packages. | MEDIUM |
-
-## Supporting Libraries
-
-| Library | Version | Purpose | When to Use | Confidence |
-|---------|---------|---------|-------------|------------|
-| glob (or fast-glob) | ^11.0 / ^3.3 | File pattern matching | Codebase mapping -- finding files by pattern | MEDIUM |
-| ignore | ^6.0 | .gitignore parsing | Respecting .gitignore during codebase mapping | MEDIUM |
-| minimatch | ^10.0 | Glob matching | Pattern matching for conflict detection | LOW |
-
-## What NOT to Include
-
-| Technology | Why Not |
-|------------|---------|
-| Database (SQLite, LevelDB) | File-based JSON state is the right model. `.branchos/` is committed to git. A database would be a separate artifact that can't be diffed, merged, or committed. |
-| Express/Fastify/any server | No web server. CLI-only tool, no dashboard, no API. |
-| React/Ink | Terminal UI framework is overkill. BranchOS outputs text and reads files. chalk + structured output is sufficient. |
-| Prisma/Drizzle/any ORM | No database means no ORM. |
-| dotenv | No environment-specific config. All config is in `.branchos/` committed to git. |
-| Winston/Pino/any logger | `console.log` with chalk formatting is sufficient for a CLI. A logging framework adds complexity without value at this scale. |
-| Monorepo tools (turborepo, nx) | Single package. No monorepo needed. |
-| Docker | Developer tool installed via npm. No containerization needed. |
-
-## Project Configuration
-
-### package.json key fields
-
-```json
-{
-  "name": "branchos",
-  "type": "module",
-  "bin": {
-    "branchos": "./dist/cli.js"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "files": ["dist"],
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+function ghAvailable(): boolean {
+  try {
+    execSync('which gh', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
   }
 }
-```
 
-### tsconfig.json key settings
+function createIssue(repo: string, title: string, body: string, labels: string[]): string {
+  const labelFlags = labels.map(l => `--label "${l}"`).join(' ');
+  const result = execSync(
+    `gh issue create --repo ${repo} --title "${title}" --body-file - ${labelFlags}`,
+    { input: body, encoding: 'utf-8' }
+  );
+  return result.trim(); // returns issue URL
+}
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "outDir": "dist",
-    "declaration": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
-  },
-  "include": ["src"]
+function listIssues(repo: string): Issue[] {
+  const json = execSync(
+    `gh issue list --repo ${repo} --json number,title,state,labels --limit 200`,
+    { encoding: 'utf-8' }
+  );
+  return JSON.parse(json);
 }
 ```
 
-### tsup.config.ts
+### Change Detection: Use Node.js `crypto`, NOT an External Library
+
+**Decision: `crypto.createHash('sha256')` from Node.js stdlib.**
+
+Content hashing for PR-FAQ change detection requires no external library.
 
 ```typescript
-import { defineConfig } from 'tsup';
+import { createHash } from 'crypto';
 
-export default defineConfig({
-  entry: ['src/cli.ts'],
-  format: ['esm'],
-  target: 'node20',
-  clean: true,
-  dts: true,
-  shims: false,
-  banner: {
-    js: '#!/usr/bin/env node',
-  },
-});
+function contentHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex').slice(0, 12);
+}
+// Store hash in frontmatter, compare on next read
+// Hash mismatch -> PR-FAQ changed -> prompt roadmap refresh
 ```
 
-## Installation (for development)
+### Markdown Section Parsing: Custom String Splitting, NOT a Parser Library
+
+BranchOS reads and writes its own markdown with known, controlled structure. The existing codebase already builds markdown sections from raw strings (see `src/context/assemble.ts`). This pattern extends naturally.
+
+**Why no markdown parser:**
+- Section extraction is string splitting on `## ` headers -- reliable for controlled formats
+- A full AST parser (remark, markdown-it, marked) adds deps and complexity for zero benefit
+- BranchOS never renders markdown to HTML
+- The v1 codebase proves this approach works at scale
+
+```typescript
+function extractSection(markdown: string, heading: string): string | null {
+  const regex = new RegExp(`^## ${heading}\\s*$`, 'm');
+  const match = regex.exec(markdown);
+  if (!match) return null;
+  const start = match.index + match[0].length;
+  const nextHeading = markdown.indexOf('\n## ', start);
+  return markdown.slice(start, nextHeading === -1 ? undefined : nextHeading).trim();
+}
+```
+
+### Schema Validation: TypeScript Interfaces, NOT Zod
+
+The v1 research recommended Zod but v1 shipped without it -- using TypeScript interfaces with manual validation and the chained schema migration system. This works well. Do not introduce Zod now.
+
+**Why stay with TypeScript interfaces:**
+- v1's pattern is proven: `WorkstreamState` interface + `migrateIfNeeded()` + `JSON.parse()` with typed assertions
+- Feature registry files have simple schemas (5-8 fields in frontmatter)
+- gray-matter returns `data` as `Record<string, any>` -- a simple type guard function is sufficient
+- Adding Zod mid-project creates inconsistency between v1 state (no Zod) and v2 state (Zod)
+
+### No File Watcher Needed
+
+BranchOS uses explicit commands, not file watching. PR-FAQ change detection is hash-based and runs on command invocation (`/branchos:refresh-roadmap`), not in real-time. Do not add chokidar, watchpack, or similar.
+
+### No Interactive Prompt Library Needed
+
+Slash commands run inside Claude Code conversations. There is no interactive terminal. Do not add inquirer, prompts, or @clack/prompts. All user interaction flows through Claude Code's natural language interface.
+
+### No Template Engine Needed
+
+Markdown generation uses template literal strings. Do not add handlebars, ejs, mustache, or similar. String interpolation is the right level of abstraction for generating structured markdown.
+
+## Installation
 
 ```bash
-# Core
-npm install commander simple-git zod chalk
+# New runtime dependency (the ONLY new dep)
+npm install gray-matter
 
-# Dev dependencies
-npm install -D typescript tsup vitest eslint prettier @typescript-eslint/eslint-plugin @typescript-eslint/parser @changesets/cli
-
-# Optional (add when needed)
-npm install fast-glob ignore
+# New dev dependency
+npm install -D @types/gray-matter
 ```
 
-## Alternatives Considered (Summary)
+One new runtime dependency. Everything else uses Node.js built-ins or existing tools (`gh` CLI, `git`).
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| CLI Framework | Commander.js | oclif | Too heavy, plugin system unneeded |
-| CLI Framework | Commander.js | yargs | Weaker TypeScript, sprawling API |
-| Build | tsup | tsc only | No bundling, many output files |
-| Build | tsup | esbuild direct | More manual config needed |
-| Git | simple-git | isomorphic-git | Unnecessary pure-JS overhead |
-| Git | simple-git | nodegit | Native module install issues |
-| Validation | Zod | ajv (JSON Schema) | Verbose, separate type generation |
-| Testing | Vitest | Jest | ESM/TS integration pain |
-| Colors | chalk | picocolors | Marginal perf gain, worse API |
-| State format | JSON | YAML/TOML | Extra parser, machine-managed files |
+## What NOT to Add
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `@octokit/rest` or `octokit` | 15+ transitive deps, token management complexity, duplicates `gh` CLI | Shell out to `gh` CLI |
+| `remark` / `unified` / `remark-parse` | 30+ packages for AST parsing not needed | gray-matter + string splitting |
+| `markdown-it` or `marked` | HTML rendering; BranchOS never renders markdown | gray-matter + string splitting |
+| `js-yaml` directly | gray-matter uses js-yaml internally; importing both creates version risk | Use gray-matter's parsed output |
+| `chokidar` / file watchers | Explicit commands, not real-time watching | Content hash on command invocation |
+| `inquirer` / `prompts` / `@clack/prompts` | No interactive terminal; runs inside Claude Code | Claude Code conversation flow |
+| `zod` / `joi` / `ajv` | Inconsistent with v1 patterns; simple schemas don't justify it | TypeScript interfaces + type guards |
+| `handlebars` / `ejs` | Template engines for string concatenation is overkill | Template literal strings |
+| `glob` / `fast-glob` | Node.js 22+ has `fs.glob`; for Node 20, `fs.readdir` is sufficient for `.branchos/shared/features/` | `fs.readdir` + `path.extname` filter |
+
+## Dependency Impact
+
+| Metric | v1 (current) | v2 (after additions) |
+|--------|-------------|---------------------|
+| Runtime deps | 3 (commander, simple-git, chalk) | 4 (+gray-matter) |
+| Transitive runtime deps | ~20 | ~25 (gray-matter adds js-yaml, strip-bom, section-matter, kind-of) |
+| Dev deps | 5 (@types/node, tsup, tsx, typescript, vitest) | 6 (+@types/gray-matter) |
+| External tool deps | git | git, gh (optional -- for Issues sync only) |
+
+## Version Compatibility
+
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| gray-matter@^4.0.3 | Node.js >=20 | CJS package. Works with tsup CJS build. Uses js-yaml@^3.x internally. |
+| gray-matter@^4.0.3 | TypeScript ^5.5.0 | Requires @types/gray-matter for declarations. |
+| gray-matter@^4.0.3 | tsup ^8.3.0 | Standard CJS require resolution, no special config. |
+| `gh` CLI | Any recent version | JSON output format (`--json`) is stable. Minimum ~2.0 for `--json` flag support. |
+
+## Stack Patterns by v2 Feature
+
+**PR-FAQ Ingestion:**
+- gray-matter parses frontmatter metadata (version, contentHash, lastModified)
+- Content body stored as plain markdown
+- `crypto.createHash('sha256')` generates content fingerprint stored in frontmatter
+- Change detection: compare stored hash vs computed hash on `/branchos:refresh-roadmap`
+
+**Roadmap Generation:**
+- Output is markdown with YAML frontmatter, written via `matter.stringify()`
+- Claude Code generates content via slash command; BranchOS provides structure and validation
+- No generation library needed
+
+**Feature Registry:**
+- Each feature is a markdown file with YAML frontmatter in `.branchos/shared/features/`
+- gray-matter parses structured data (id, milestone, status, branch, issue)
+- `fs.readdir` lists feature files; gray-matter parses each
+- Simple type guard validates frontmatter shape
+
+**GitHub Issues Sync:**
+- `gh issue create` / `gh issue edit` / `gh issue list` via `child_process.execSync`
+- `--json` flag for structured output, parsed with `JSON.parse()`
+- Graceful degradation: warn and skip if `gh` not installed
+- Owner/repo from `git remote get-url origin` (already available via simple-git)
+
+**Slash-Command-Only Migration:**
+- No new deps. Existing `install-commands.ts` COMMANDS record pattern extends naturally.
+- New slash command .md files added to the record
+- CLI commands that move to slash-only get removed from Commander registration
+- `branchos init` and `branchos install-commands` remain as CLI commands (bootstrapping)
 
 ## Sources
 
-- Training data (knowledge cutoff: May 2025). All version numbers should be verified against npm registry before project initialization.
-- Commander.js: https://github.com/tj/commander.js
-- simple-git: https://github.com/steveukx/git-js
-- tsup: https://github.com/egoist/tsup
-- Zod: https://github.com/colinhacks/zod
-- Vitest: https://vitest.dev
-- chalk: https://github.com/chalk/chalk
+- [gray-matter npm](https://www.npmjs.com/package/gray-matter) -- version 4.0.3, high weekly downloads (MEDIUM confidence, npm data)
+- [gray-matter GitHub](https://github.com/jonschlinkert/gray-matter) -- feature set, used-by list confirms wide adoption (HIGH confidence, official repo)
+- [npm trends comparison](https://npmtrends.com/front-matter-vs-gray-matter-vs-markdown-it-vs-marked-vs-remark-frontmatter-vs-remarkable) -- gray-matter leads for frontmatter-specific parsing (MEDIUM confidence)
+- [Octokit REST.js GitHub](https://github.com/octokit/rest.js/) -- evaluated and rejected for this use case (HIGH confidence, official repo)
+- [GitHub REST API quickstart](https://docs.github.com/en/rest/quickstart) -- confirms `gh` CLI as valid integration path (HIGH confidence, official docs)
+- [Node.js crypto docs](https://nodejs.org/api/crypto.html) -- createHash API for Node.js 20+ (HIGH confidence, official docs)
+- Existing BranchOS source: `src/context/assemble.ts`, `src/state/state.ts`, `src/cli/install-commands.ts` -- confirmed patterns for string-based markdown, file I/O, shell-out architecture (HIGH confidence, primary source)
 
-**Verification note:** WebSearch, Bash, and WebFetch were unavailable during this research session. All version numbers are based on training data (cutoff May 2025) and should be verified with `npm view <package> version` before initializing the project. Version ranges (^) provide buffer for minor updates.
+---
+*Stack research for: BranchOS v2 project-level planning layer*
+*Researched: 2026-03-09*

@@ -26,7 +26,7 @@
 - Integer phases (6, 7, 8...): Planned milestone work
 - Decimal phases (7.1, 7.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 6: PR-FAQ Ingestion** - Users can feed a PR-FAQ document into BranchOS for project planning
+- [x] **Phase 6: PR-FAQ Ingestion** - Users can feed a PR-FAQ document into BranchOS for project planning (completed 2026-03-09)
 - [ ] **Phase 7: Roadmap Generation and Feature Registry** - Users can generate a structured roadmap with trackable features from their PR-FAQ
 - [ ] **Phase 8: Feature-Aware Workstreams** - Developers can create workstreams linked to features with acceptance criteria in context
 - [ ] **Phase 9: GitHub Issues Sync and Roadmap Refresh** - Users can push features to GitHub Issues and refresh the roadmap when the PR-FAQ evolves
@@ -43,7 +43,7 @@
   2. System prints warnings for missing PR-FAQ sections (e.g., no FAQ, no customer quotes) without blocking ingestion
   3. Re-ingesting an unchanged PR-FAQ reports "no changes detected" (content hash comparison works)
   4. Re-ingesting a modified PR-FAQ reports what changed and updates the stored copy
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 06-01-PLAN.md -- Types, section validation, content hashing (pure functions + tests)
@@ -123,7 +123,7 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 3. Workflow Phases | v1.0 | 3/3 | Complete | 2026-03-08 |
 | 4. Context Assembly | v1.0 | 2/2 | Complete | 2026-03-08 |
 | 5. Team Coordination | v1.0 | 3/3 | Complete | 2026-03-09 |
-| 6. PR-FAQ Ingestion | v2.0 | 0/2 | Not started | - |
+| 6. PR-FAQ Ingestion | 2/2 | Complete   | 2026-03-09 | - |
 | 7. Roadmap and Feature Registry | v2.0 | 0/3 | Not started | - |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
 | 9. GitHub Issues Sync and Roadmap Refresh | v2.0 | 0/3 | Not started | - |

@@ -9,7 +9,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 
 ### PR-FAQ Ingestion
 
-- [ ] **PRFAQ-01**: User can ingest a PO-provided PR-FAQ.md into `.branchos/shared/PR-FAQ.md`
+- [x] **PRFAQ-01**: User can ingest a PO-provided PR-FAQ.md into `.branchos/shared/PR-FAQ.md`
 - [x] **PRFAQ-02**: System validates PR-FAQ structure and warns on missing sections (lenient, not strict)
 - [x] **PRFAQ-03**: System stores content hash of PR-FAQ for change detection
 
@@ -77,7 +77,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PRFAQ-01 | Phase 6 | Pending |
+| PRFAQ-01 | Phase 6 | Complete |
 | PRFAQ-02 | Phase 6 | Complete |
 | PRFAQ-03 | Phase 6 | Complete |
 | ROAD-01 | Phase 7 | Pending |

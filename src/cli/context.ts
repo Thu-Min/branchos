@@ -2,8 +2,9 @@ import { Command } from 'commander';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { GitOps } from '../git/index.js';
-import { resolveCurrentWorkstream, getCurrentPhase } from '../phase/index.js';
+import { getCurrentPhase } from '../phase/index.js';
 import { readState } from '../state/state.js';
+import { ensureWorkstream } from '../workstream/prompt.js';
 import { checkStaleness } from '../map/staleness.js';
 import {
   assembleContext,
@@ -42,11 +43,11 @@ export async function contextHandler(
   const git = new GitOps(options.cwd);
   const repoRoot = await git.getRepoRoot();
 
-  const workstream = await resolveCurrentWorkstream(repoRoot);
+  const workstream = await ensureWorkstream(repoRoot);
   if (!workstream) {
-    error('No workstream found for current branch. Run branchos create first.', {
-      json: options.json,
-    });
+    if (options.json) {
+      error('No workstream found for current branch.', { json: true });
+    }
     return null;
   }
 

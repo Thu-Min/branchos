@@ -2,10 +2,11 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { join } from 'path';
 import { GitOps } from '../git/index.js';
-import { resolveCurrentWorkstream, getCurrentPhase } from '../phase/index.js';
+import { getCurrentPhase } from '../phase/index.js';
 import { readState } from '../state/state.js';
 import { checkDrift, DriftResult } from '../phase/drift.js';
 import { output, error } from '../output/index.js';
+import { ensureWorkstream } from '../workstream/prompt.js';
 
 export interface CheckDriftOptions {
   json?: boolean;
@@ -19,11 +20,11 @@ export async function checkDriftHandler(
   const git = new GitOps(options.cwd);
   const repoRoot = await git.getRepoRoot();
 
-  const workstream = await resolveCurrentWorkstream(repoRoot);
+  const workstream = await ensureWorkstream(repoRoot);
   if (!workstream) {
-    error('No workstream found for current branch. Run branchos create first.', {
-      json: options.json,
-    });
+    if (options.json) {
+      error('No workstream found for current branch.', { json: true });
+    }
     return null;
   }
 

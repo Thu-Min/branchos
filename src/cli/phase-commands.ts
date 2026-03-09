@@ -4,6 +4,7 @@ import { GitOps } from '../git/index.js';
 import { resolveCurrentWorkstream, getCurrentPhase } from '../phase/index.js';
 import { readState } from '../state/state.js';
 import { output, error } from '../output/index.js';
+import { ensureWorkstream } from '../workstream/prompt.js';
 
 export interface PhaseCommandOptions {
   json?: boolean;
@@ -27,16 +28,15 @@ async function resolvePhaseContext(
 ): Promise<PhaseCommandResult & { error?: string }> {
   const git = new GitOps(options.cwd);
   const repoRoot = await git.getRepoRoot();
-  const ws = await resolveCurrentWorkstream(repoRoot);
+  const ws = await ensureWorkstream(repoRoot);
 
   if (!ws) {
-    const branch = await git.getCurrentBranch();
     return {
       workstreamId: '',
       targetPhase: 0,
       command: '',
       currentPhaseState: null,
-      error: `No workstream found for branch '${branch}'. Run \`branchos workstream create\` first.`,
+      error: 'no-workstream',
     };
   }
 
@@ -77,9 +77,7 @@ export async function discussPhaseHandler(
 
   if (ctx.error) {
     if (options.json) {
-      error(ctx.error, { json: true });
-    } else {
-      console.error(ctx.error);
+      error('No workstream found for current branch.', { json: true });
     }
     return;
   }
@@ -111,9 +109,7 @@ export async function planPhaseHandler(
 
   if (ctx.error) {
     if (options.json) {
-      error(ctx.error, { json: true });
-    } else {
-      console.error(ctx.error);
+      error('No workstream found for current branch.', { json: true });
     }
     return;
   }
@@ -145,9 +141,7 @@ export async function executePhaseHandler(
 
   if (ctx.error) {
     if (options.json) {
-      error(ctx.error, { json: true });
-    } else {
-      console.error(ctx.error);
+      error('No workstream found for current branch.', { json: true });
     }
     return;
   }

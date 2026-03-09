@@ -5,6 +5,8 @@ import { registerMapStatusCommand } from './map-status.js';
 import { registerPhaseCommands } from './phase-commands.js';
 import { registerCheckDriftCommand } from './check-drift.js';
 import { registerContextCommand } from './context.js';
+import { registerStatusCommand } from './status.js';
+import { registerArchiveCommands } from './archive.js';
 
 export const program = new Command();
 
@@ -20,6 +22,8 @@ registerMapStatusCommand(program);
 registerPhaseCommands(program);
 registerCheckDriftCommand(program);
 registerContextCommand(program);
+registerStatusCommand(program);
+registerArchiveCommands(program);
 
 // Show help when no arguments provided
 program.action(() => {

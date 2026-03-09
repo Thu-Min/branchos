@@ -43,11 +43,11 @@
   2. System prints warnings for missing PR-FAQ sections (e.g., no FAQ, no customer quotes) without blocking ingestion
   3. Re-ingesting an unchanged PR-FAQ reports "no changes detected" (content hash comparison works)
   4. Re-ingesting a modified PR-FAQ reports what changed and updates the stored copy
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md -- Types, section validation, content hashing (pure functions + tests)
+- [ ] 06-02-PLAN.md -- CLI command handler, slash command registration, wiring
 
 ### Phase 7: Roadmap Generation and Feature Registry
 **Goal**: Users can generate a structured roadmap with individual trackable features from their ingested PR-FAQ

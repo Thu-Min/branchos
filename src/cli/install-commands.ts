@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 const COMMANDS: Record<string, string> = {
-  'map-codebase.md': `---
+  'branchos:map-codebase.md': `---
 description: Generate or refresh the codebase map in .branchos/shared/codebase/
 allowed-tools: Read, Glob, Grep, Write, Bash(git rev-parse HEAD), Bash(git add *), Bash(git commit *)
 ---
@@ -121,7 +121,7 @@ git commit -m "chore(branchos): refresh codebase map"
 
 $ARGUMENTS`,
 
-  'context.md': `---
+  'branchos:context.md': `---
 description: Load workstream context for current phase
 allowed-tools: Bash(npx branchos *)
 ---
@@ -147,7 +147,7 @@ You can pass an explicit step to override auto-detection: \`/context discuss\`, 
 
 $ARGUMENTS`,
 
-  'discuss-phase.md': `---
+  'branchos:discuss-phase.md': `---
 description: Create or update discussion context for current workstream phase
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
@@ -270,7 +270,7 @@ git commit -m "chore(branchos): discuss phase <n> for <workstream-id>"
 
 $ARGUMENTS`,
 
-  'plan-phase.md': `---
+  'branchos:plan-phase.md': `---
 description: Create implementation plan for current workstream phase
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
@@ -403,7 +403,7 @@ git commit -m "chore(branchos): plan phase <n> for <workstream-id>"
 
 $ARGUMENTS`,
 
-  'execute-phase.md': `---
+  'branchos:execute-phase.md': `---
 description: Update execution state for current workstream phase
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---

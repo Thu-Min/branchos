@@ -92,11 +92,12 @@ Plans:
   3. When two workstreams have planned or actual changes to the same files, conflict detection warns the user
   4. User can archive a completed workstream after its branch merges
   5. When user switches to a branch with no workstream, BranchOS prompts to create one
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — Status command, archive/unarchive commands, and GitOps extensions
+- [ ] 05-02-PLAN.md — Conflict detection with severity classification
+- [ ] 05-03-PLAN.md — Branch-switch prompt and CLI registration wiring
 
 ## Progress
 
@@ -109,4 +110,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Codebase Mapping | 2/2 | Complete | 2026-03-08 |
 | 3. Workflow Phases | 2/3 | In Progress|  |
 | 4. Context Assembly | 2/2 | Complete   | 2026-03-08 |
-| 5. Team Coordination | 0/0 | Not started | - |
+| 5. Team Coordination | 0/3 | Not started | - |

@@ -83,6 +83,27 @@ export class GitOps {
     }
   }
 
+  async getChangedFilesForBranch(branch: string, baseBranch: string): Promise<string[]> {
+    try {
+      const mergeBase = await this.git.raw(['merge-base', branch, baseBranch]);
+      const result = await this.git.raw([
+        'diff', '--name-only', mergeBase.trim() + '..' + branch,
+      ]);
+      return result.trim().split('\n').filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  async isBranchMerged(branch: string, into: string): Promise<boolean> {
+    try {
+      await this.git.raw(['merge-base', '--is-ancestor', branch, into]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async hasChanges(files: string[]): Promise<boolean> {
     const status = await this.git.status();
     const allChanged = [

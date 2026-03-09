@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 const COMMAND_PATH = resolve(
   import.meta.dirname,
-  '../../.claude/commands/map-codebase.md',
+  '../../.claude/commands/branchos:map-codebase.md',
 );
 
 describe('map-codebase slash command', () => {

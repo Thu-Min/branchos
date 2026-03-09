@@ -77,29 +77,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PRFAQ-01 | — | Pending |
-| PRFAQ-02 | — | Pending |
-| PRFAQ-03 | — | Pending |
-| ROAD-01 | — | Pending |
-| ROAD-02 | — | Pending |
-| ROAD-03 | — | Pending |
-| ROAD-04 | — | Pending |
-| ROAD-05 | — | Pending |
-| FEAT-01 | — | Pending |
-| FEAT-02 | — | Pending |
-| FEAT-03 | — | Pending |
-| GHIS-01 | — | Pending |
-| GHIS-02 | — | Pending |
-| WORK-01 | — | Pending |
-| WORK-02 | — | Pending |
-| MIGR-01 | — | Pending |
-| MIGR-02 | — | Pending |
+| PRFAQ-01 | Phase 6 | Pending |
+| PRFAQ-02 | Phase 6 | Pending |
+| PRFAQ-03 | Phase 6 | Pending |
+| ROAD-01 | Phase 7 | Pending |
+| ROAD-02 | Phase 7 | Pending |
+| ROAD-03 | Phase 7 | Pending |
+| ROAD-04 | Phase 9 | Pending |
+| ROAD-05 | Phase 9 | Pending |
+| FEAT-01 | Phase 7 | Pending |
+| FEAT-02 | Phase 7 | Pending |
+| FEAT-03 | Phase 7 | Pending |
+| GHIS-01 | Phase 9 | Pending |
+| GHIS-02 | Phase 9 | Pending |
+| WORK-01 | Phase 8 | Pending |
+| WORK-02 | Phase 8 | Pending |
+| MIGR-01 | Phase 10 | Pending |
+| MIGR-02 | Phase 10 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*

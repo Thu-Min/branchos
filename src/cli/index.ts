@@ -9,6 +9,7 @@ import { registerStatusCommand } from './status.js';
 import { registerArchiveCommands } from './archive.js';
 import { registerDetectConflictsCommand } from './detect-conflicts.js';
 import { registerInstallCommandsCommand } from './install-commands.js';
+import { registerIngestPrfaqCommand } from './ingest-prfaq.js';
 
 export const program = new Command();
 
@@ -28,6 +29,7 @@ registerStatusCommand(program);
 registerArchiveCommands(program);
 registerDetectConflictsCommand(program);
 registerInstallCommandsCommand(program);
+registerIngestPrfaqCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

@@ -1,6 +1,6 @@
 {
   "name": "branchos",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Branch-based AI-assisted development workflow management",
   "main": "dist/index.cjs",
@@ -8,7 +8,7 @@
     ".": "./dist/index.cjs"
   },
   "bin": {
-    "branchos": "./dist/index.cjs"
+    "branchos": "dist/index.cjs"
   },
   "files": [
     "dist"

@@ -8,13 +8,14 @@ import { registerContextCommand } from './context.js';
 import { registerStatusCommand } from './status.js';
 import { registerArchiveCommands } from './archive.js';
 import { registerDetectConflictsCommand } from './detect-conflicts.js';
+import { registerInstallCommandsCommand } from './install-commands.js';
 
 export const program = new Command();
 
 program
   .name('branchos')
   .description('Branch-based AI-assisted development workflow management')
-  .version('0.1.0');
+  .version('1.0.0');
 
 // Register commands
 registerInitCommand(program);
@@ -26,6 +27,7 @@ registerContextCommand(program);
 registerStatusCommand(program);
 registerArchiveCommands(program);
 registerDetectConflictsCommand(program);
+registerInstallCommandsCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

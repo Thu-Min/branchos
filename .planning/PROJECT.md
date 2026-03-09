@@ -30,14 +30,34 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 
 ### Active
 
-(None yet — define in next milestone)
+- [ ] PR-FAQ ingestion (read PO-provided PR-FAQ.md as living document)
+- [ ] Roadmap generation from PR-FAQ
+- [ ] Roadmap refresh when PR-FAQ changes
+- [ ] Feature registry with acceptance criteria
+- [ ] GitHub Issues sync from features
+- [ ] Feature-aware workstream creation
+- [ ] Enhanced context assembly (feature context in packets)
+- [ ] Migrate all v1 CLI commands to slash-command-only
+- [ ] CLI reduced to bootstrapper (init, install slash commands)
+
+## Current Milestone: v2.0 Project-Level Planning
+
+**Goal:** Add a project-level planning layer above workstreams — from PR-FAQ ingestion through feature registry and GitHub Issues, all driven via slash commands.
+
+**Target features:**
+- PR-FAQ ingestion and change tracking
+- Roadmap generation and refresh from PR-FAQ
+- Feature registry with acceptance criteria
+- GitHub Issues sync
+- Feature-aware workstream creation
+- Enhanced context assembly with feature context
+- Full migration to slash-command-only architecture
 
 ### Out of Scope
 
 - Web dashboard — terminal-first, no UI beyond CLI
 - Multi-repo orchestration — single repo focus
 - Autonomous multi-agent swarm — tool assists developers, doesn't replace them
-- Issue tracker integrations — no Jira/Linear/GitHub Issues
 - PR automation — no auto-PR creation
 - Real-time collaboration server — async, file-based coordination
 - Module-level conflict detection — file-level only (proven sufficient in v1.0)
@@ -96,6 +116,10 @@ When Claude Code runs a slash command, BranchOS assembles context from:
 | Chained schema migration (v0->v1->v2) | All schema versions migrate correctly through intermediate steps | ✓ Good |
 | Pure context assembly function | No I/O in assembleContext for easy testing; callers resolve data | ✓ Good |
 | ensureWorkstream gate on commands | Single integration point prevents workstream-less command execution | ✓ Good |
+| Slash-command-only architecture | All workflow commands via `/branchos:*` in Claude Code; CLI reduced to bootstrapper | — Pending |
+| PR-FAQ as input, not generated | Product Owner provides PR-FAQ; BranchOS ingests and tracks changes | — Pending |
+| Explicit refresh-roadmap command | No auto-detection of PR-FAQ drift; team runs `/branchos:refresh-roadmap` when ready | — Pending |
+| GitHub Issues for assignment | Don't rebuild what exists; GitHub has assignment, labels, boards, discussion | — Pending |
 
 ---
-*Last updated: 2026-03-09 after v1.0 milestone*
+*Last updated: 2026-03-09 after v2.0 milestone started*

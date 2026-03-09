@@ -18,8 +18,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **WRK-01**: User can create a workstream that auto-derives its ID from the current git branch name
 - [x] **WRK-02**: User can override the auto-derived workstream ID with a `--name` flag
-- [ ] **WRK-03**: User can run `branchos status` to see all active workstreams, their branches, phases, and last activity
-- [ ] **WRK-04**: User can archive a completed workstream after its branch merges
+- [x] **WRK-03**: User can run `branchos status` to see all active workstreams, their branches, phases, and last activity
+- [x] **WRK-04**: User can archive a completed workstream after its branch merges
 - [ ] **WRK-05**: When user switches to a branch with no workstream, BranchOS prompts to create one
 - [x] **WRK-06**: Workstreams use stable internal IDs for directory storage (not raw branch names) to survive branch renames
 
@@ -104,8 +104,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-04 | Phase 1 | Complete |
 | WRK-01 | Phase 1 | Complete |
 | WRK-02 | Phase 1 | Complete |
-| WRK-03 | Phase 5 | Pending |
-| WRK-04 | Phase 5 | Pending |
+| WRK-03 | Phase 5 | Complete |
+| WRK-04 | Phase 5 | Complete |
 | WRK-05 | Phase 5 | Pending |
 | WRK-06 | Phase 1 | Complete |
 | STA-01 | Phase 1 | Complete |

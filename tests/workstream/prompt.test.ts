@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock readline to control promptYesNo behavior
+const mockQuestion = vi.fn();
+const mockClose = vi.fn();
+vi.mock('node:readline', () => ({
+  createInterface: vi.fn(() => ({
+    question: mockQuestion,
+    close: mockClose,
+  })),
+}));
+
 // Mock dependencies before importing
 vi.mock('../../src/phase/index.js', () => ({
   resolveCurrentWorkstream: vi.fn(),
@@ -42,10 +52,28 @@ describe('promptYesNo', () => {
     const result = await promptYesNo('Create workstream?');
     expect(result).toBe(false);
   });
+
+  it('returns true when user types y', async () => {
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+    mockQuestion.mockImplementation((_q: string, cb: (answer: string) => void) => cb('y'));
+
+    const result = await promptYesNo('Create?');
+    expect(result).toBe(true);
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('returns false when user types n', async () => {
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+    mockQuestion.mockImplementation((_q: string, cb: (answer: string) => void) => cb('n'));
+
+    const result = await promptYesNo('Create?');
+    expect(result).toBe(false);
+  });
 });
 
 describe('ensureWorkstream', () => {
   let mockGetCurrentBranch: ReturnType<typeof vi.fn>;
+  const originalIsTTY = process.stdin.isTTY;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,6 +85,12 @@ describe('ensureWorkstream', () => {
           getRepoRoot: vi.fn(),
         }) as unknown as InstanceType<typeof GitOps>,
     );
+    // Default to TTY for ensureWorkstream tests
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, writable: true });
   });
 
   it('returns existing workstream when resolveCurrentWorkstream finds one', async () => {
@@ -64,7 +98,6 @@ describe('ensureWorkstream', () => {
 
     const result = await ensureWorkstream('/repo');
     expect(result).toEqual({ id: 'my-ws', path: '/tmp/ws' });
-    // Should not call GitOps or prompt
     expect(mockGetCurrentBranch).not.toHaveBeenCalled();
   });
 
@@ -76,12 +109,14 @@ describe('ensureWorkstream', () => {
     const result = await ensureWorkstream('/repo');
     expect(result).toBeNull();
     expect(mockedCreateWorkstream).not.toHaveBeenCalled();
+    expect(mockQuestion).not.toHaveBeenCalled();
   });
 
   it('creates workstream when user confirms', async () => {
     mockedResolve.mockResolvedValue(null);
     mockGetCurrentBranch.mockResolvedValue('feature/new-thing');
     mockedIsProtected.mockReturnValue(false);
+    mockQuestion.mockImplementation((_q: string, cb: (answer: string) => void) => cb('yes'));
     mockedCreateWorkstream.mockResolvedValue({
       workstreamId: 'new-thing',
       branch: 'feature/new-thing',
@@ -89,34 +124,24 @@ describe('ensureWorkstream', () => {
       created: true,
     });
 
-    // Mock promptYesNo to return true by mocking readline
-    // We'll use the module's own promptYesNo, but we need to control stdin
-    // Instead, we'll mock the module partially
-    const promptModule = await import('../../src/workstream/prompt.js');
-    const promptSpy = vi.spyOn(promptModule, 'promptYesNo').mockResolvedValue(true);
-
-    const result = await promptModule.ensureWorkstream('/repo');
+    const result = await ensureWorkstream('/repo');
     expect(result).toEqual({ id: 'new-thing', path: '/repo/.branchos/workstreams/new-thing' });
     expect(mockedCreateWorkstream).toHaveBeenCalledWith({ repoRoot: '/repo' });
-
-    promptSpy.mockRestore();
   });
 
   it('returns null when user declines', async () => {
     mockedResolve.mockResolvedValue(null);
     mockGetCurrentBranch.mockResolvedValue('feature/new-thing');
     mockedIsProtected.mockReturnValue(false);
+    mockQuestion.mockImplementation((_q: string, cb: (answer: string) => void) => cb('no'));
 
-    const promptModule = await import('../../src/workstream/prompt.js');
-    const promptSpy = vi.spyOn(promptModule, 'promptYesNo').mockResolvedValue(false);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    const result = await promptModule.ensureWorkstream('/repo');
+    const result = await ensureWorkstream('/repo');
     expect(result).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith('Workstream required for this command.');
     expect(mockedCreateWorkstream).not.toHaveBeenCalled();
 
-    promptSpy.mockRestore();
     consoleSpy.mockRestore();
   });
 
@@ -124,16 +149,29 @@ describe('ensureWorkstream', () => {
     mockedResolve.mockResolvedValue(null);
     mockGetCurrentBranch.mockResolvedValue('feature/test');
     mockedIsProtected.mockReturnValue(false);
-
-    const promptModule = await import('../../src/workstream/prompt.js');
-    const promptSpy = vi.spyOn(promptModule, 'promptYesNo').mockResolvedValue(false);
+    mockQuestion.mockImplementation((_q: string, cb: (answer: string) => void) => cb('n'));
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    await promptModule.ensureWorkstream('/repo');
-    expect(promptSpy).toHaveBeenCalledWith(
+    await ensureWorkstream('/repo');
+    expect(mockQuestion).toHaveBeenCalledWith(
       expect.stringContaining("No workstream for branch 'feature/test'"),
+      expect.any(Function),
     );
+  });
 
-    promptSpy.mockRestore();
+  it('returns null in non-TTY environment without prompting', async () => {
+    mockedResolve.mockResolvedValue(null);
+    mockGetCurrentBranch.mockResolvedValue('feature/test');
+    mockedIsProtected.mockReturnValue(false);
+    Object.defineProperty(process.stdin, 'isTTY', { value: false, writable: true });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const result = await ensureWorkstream('/repo');
+    expect(result).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith('Workstream required for this command.');
+    expect(mockQuestion).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
   });
 });

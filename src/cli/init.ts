@@ -11,6 +11,7 @@ import {
 } from '../constants.js';
 import { createDefaultConfig } from '../state/config.js';
 import { success, error, output } from '../output/index.js';
+import { installSlashCommands } from './install-commands.js';
 
 interface InitOptions {
   json: boolean;
@@ -101,6 +102,9 @@ export async function initHandler(options: InitOptions): Promise<InitResult> {
     await git.addAndCommit(filesToAdd, 'chore: initialize branchos');
   }
 
+  // Auto-install slash commands (both fresh init and re-init)
+  installSlashCommands();
+
   // Report results
   if (options.json) {
     return { success: true, created, skipped };
@@ -111,8 +115,10 @@ export async function initHandler(options: InitOptions): Promise<InitResult> {
     for (const item of created) {
       success(`Created ${item}`, { json: false });
     }
+    success('Slash commands installed to ~/.claude/commands/ and ~/.claude/skills/', { json: false });
   } else {
     success('Already initialized, nothing to do.', { json: false });
+    success('Slash commands refreshed.', { json: false });
   }
 
   if (skipped.length > 0) {

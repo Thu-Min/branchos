@@ -10,6 +10,8 @@ import { registerArchiveCommands } from './archive.js';
 import { registerDetectConflictsCommand } from './detect-conflicts.js';
 import { registerInstallCommandsCommand } from './install-commands.js';
 import { registerIngestPrfaqCommand } from './ingest-prfaq.js';
+import { registerPlanRoadmapCommand } from './plan-roadmap.js';
+import { registerFeaturesCommand } from './features.js';
 
 export const program = new Command();
 
@@ -30,6 +32,8 @@ registerArchiveCommands(program);
 registerDetectConflictsCommand(program);
 registerInstallCommandsCommand(program);
 registerIngestPrfaqCommand(program);
+registerPlanRoadmapCommand(program);
+registerFeaturesCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

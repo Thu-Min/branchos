@@ -27,7 +27,7 @@
 - Decimal phases (7.1, 7.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 6: PR-FAQ Ingestion** - Users can feed a PR-FAQ document into BranchOS for project planning (completed 2026-03-09)
-- [ ] **Phase 7: Roadmap Generation and Feature Registry** - Users can generate a structured roadmap with trackable features from their PR-FAQ
+- [x] **Phase 7: Roadmap Generation and Feature Registry** - Users can generate a structured roadmap with trackable features from their PR-FAQ (completed 2026-03-10)
 - [ ] **Phase 8: Feature-Aware Workstreams** - Developers can create workstreams linked to features with acceptance criteria in context
 - [ ] **Phase 9: GitHub Issues Sync and Roadmap Refresh** - Users can push features to GitHub Issues and refresh the roadmap when the PR-FAQ evolves
 - [ ] **Phase 10: Slash Command Migration** - All workflow commands available as slash commands with CLI reduced to bootstrapper
@@ -59,7 +59,7 @@ Plans:
   3. Features start in "unassigned" status and can transition through assigned, in-progress, and complete
   4. User can run `/branchos:features` and see a table of all features with their status, milestone, and branch name
   5. Generated feature files include branch name suggestions derived from feature titles
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 07-01-PLAN.md -- Types, frontmatter, slug, feature file, and roadmap file modules (pure functions + tests)
@@ -124,7 +124,7 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 4. Context Assembly | v1.0 | 2/2 | Complete | 2026-03-08 |
 | 5. Team Coordination | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 6. PR-FAQ Ingestion | v2.0 | 2/2 | Complete | 2026-03-09 |
-| 7. Roadmap and Feature Registry | v2.0 | 2/3 | In progress | - |
+| 7. Roadmap and Feature Registry | 3/3 | Complete   | 2026-03-10 | - |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
 | 9. GitHub Issues Sync and Roadmap Refresh | v2.0 | 0/3 | Not started | - |
 | 10. Slash Command Migration | v2.0 | 0/2 | Not started | - |

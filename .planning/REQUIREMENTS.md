@@ -15,7 +15,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 
 ### Roadmap Generation
 
-- [ ] **ROAD-01**: User can generate ROADMAP.md from PR-FAQ via `/branchos:plan-roadmap`
+- [x] **ROAD-01**: User can generate ROADMAP.md from PR-FAQ via `/branchos:plan-roadmap`
 - [x] **ROAD-02**: Generated roadmap contains milestones with ordered features and dependencies
 - [x] **ROAD-03**: System generates individual feature files with acceptance criteria and branch names
 - [ ] **ROAD-04**: User can refresh roadmap when PR-FAQ changes via `/branchos:refresh-roadmap`
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRFAQ-01 | Phase 6 | Complete |
 | PRFAQ-02 | Phase 6 | Complete |
 | PRFAQ-03 | Phase 6 | Complete |
-| ROAD-01 | Phase 7 | Pending |
+| ROAD-01 | Phase 7 | Complete |
 | ROAD-02 | Phase 7 | Complete |
 | ROAD-03 | Phase 7 | Complete |
 | ROAD-04 | Phase 9 | Pending |

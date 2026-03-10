@@ -30,7 +30,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 ### GitHub Issues Sync
 
 - [x] **GHIS-01**: User can create GitHub Issues from features via `/branchos:sync-issues` using `gh` CLI
-- [ ] **GHIS-02**: Sync is idempotent — re-running updates existing issues, stores issue number in frontmatter
+- [x] **GHIS-02**: Sync is idempotent — re-running updates existing issues, stores issue number in frontmatter
 
 ### Workstream Enhancement
 
@@ -89,7 +89,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FEAT-02 | Phase 7 | Complete |
 | FEAT-03 | Phase 7 | Complete |
 | GHIS-01 | Phase 9 | Complete |
-| GHIS-02 | Phase 9 | Pending |
+| GHIS-02 | Phase 9 | Complete |
 | WORK-01 | Phase 8 | Complete |
 | WORK-02 | Phase 8 | Complete |
 | MIGR-01 | Phase 10 | Pending |

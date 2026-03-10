@@ -67,7 +67,7 @@ describe('slash command .md files', () => {
       path.join(COMMANDS_DIR, 'branchos:list-workstreams.md'),
       'utf-8',
     );
-    expect(content).toContain('npx branchos workstream list');
+    expect(content).toContain('npx branchos status');
   });
 
   it('status.md references map-status, check-drift, and detect-conflicts', () => {

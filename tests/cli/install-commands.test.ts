@@ -122,22 +122,21 @@ describe('install-commands', () => {
       expect(commands).toContain('install-commands');
     });
 
-    it('has version "2.0.0"', async () => {
+    it('has version "2.0.1"', async () => {
       const { program } = await import('../../src/cli/index.js');
-      expect(program.version()).toBe('2.0.0');
+      expect(program.version()).toBe('2.0.1');
     });
 
-    it('does NOT have "workstream" command (removed)', async () => {
+    it('has "workstream" command', async () => {
       const { program } = await import('../../src/cli/index.js');
       const commands = program.commands.map(c => c.name());
-      // workstream commands registered via registerWorkstreamCommands adds "workstream" parent
-      expect(commands).not.toContain('workstream');
+      expect(commands).toContain('workstream');
     });
 
-    it('does NOT have "ingest-prfaq" command (removed)', async () => {
+    it('has "ingest-prfaq" command', async () => {
       const { program } = await import('../../src/cli/index.js');
       const commands = program.commands.map(c => c.name());
-      expect(commands).not.toContain('ingest-prfaq');
+      expect(commands).toContain('ingest-prfaq');
     });
 
     it('has "map-status" command (utility, kept for npx delegation)', async () => {

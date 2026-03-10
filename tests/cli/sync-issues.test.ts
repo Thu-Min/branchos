@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock fs/promises access so fileExists always returns true
+vi.mock('fs/promises', () => ({
+  access: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock all dependencies before imports
 vi.mock('../../src/github/index.js', () => ({
   checkGhAvailable: vi.fn(),

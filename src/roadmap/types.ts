@@ -3,6 +3,7 @@ export const FEATURE_STATUSES = [
   'assigned',
   'in-progress',
   'complete',
+  'dropped',
 ] as const;
 
 export type FeatureStatus = (typeof FEATURE_STATUSES)[number];

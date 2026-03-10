@@ -41,7 +41,7 @@ function makeFeature(overrides: Partial<Feature> & { id: string; title: string }
 }
 
 const EXISTING_FEATURES: Feature[] = [
-  makeFeature({ id: 'F-001', title: 'User auth', status: 'in-progress', issue: 10, workstream: 'ws-auth' }),
+  makeFeature({ id: 'F-001', title: 'User authentication system', status: 'in-progress', issue: 10, workstream: 'ws-auth' }),
   makeFeature({ id: 'F-002', title: 'API gateway', status: 'assigned', issue: 11, workstream: 'ws-api' }),
   makeFeature({ id: 'F-003', title: 'Dashboard', status: 'unassigned', issue: null, workstream: null }),
 ];
@@ -54,7 +54,7 @@ const NEW_ROADMAP_DATA: RoadmapData = {
       id: 'M1',
       name: 'Foundation',
       features: [
-        makeFeature({ id: 'F-001', title: 'User authentication', body: '## Acceptance Criteria\n\n- [ ] OAuth works' }),
+        makeFeature({ id: 'F-001', title: 'User authentication service', body: '## Acceptance Criteria\n\n- [ ] OAuth works' }),
         makeFeature({ id: 'F-002', title: 'API gateway', body: '## Acceptance Criteria\n\n- [ ] Gateway routes v2' }),
         makeFeature({ id: 'F-004', title: 'Notifications', body: '## Acceptance Criteria\n\n- [ ] Notifies users' }),
       ],
@@ -153,7 +153,7 @@ describe('refresh-roadmap', () => {
       });
 
       expect(result.success).toBe(true);
-      // "User auth" matches "User authentication" by title similarity
+      // "User authentication system" matches "User authentication service" by title similarity
       expect(result.updated).toBeGreaterThanOrEqual(1);
 
       // Read the updated F-001 feature file to verify metadata preserved

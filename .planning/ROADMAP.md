@@ -59,12 +59,12 @@ Plans:
   3. Features start in "unassigned" status and can transition through assigned, in-progress, and complete
   4. User can run `/branchos:features` and see a table of all features with their status, milestone, and branch name
   5. Generated feature files include branch name suggestions derived from feature titles
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
-- [ ] 07-03: TBD
+- [ ] 07-01-PLAN.md -- Types, frontmatter, slug, feature file, and roadmap file modules (pure functions + tests)
+- [ ] 07-02-PLAN.md -- plan-roadmap CLI handler, slash command registration, wiring
+- [ ] 07-03-PLAN.md -- features CLI handler, slash command registration, wiring
 
 ### Phase 8: Feature-Aware Workstreams
 **Goal**: Developers can create workstreams linked to specific features, with acceptance criteria automatically included in their context packets
@@ -123,7 +123,7 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 3. Workflow Phases | v1.0 | 3/3 | Complete | 2026-03-08 |
 | 4. Context Assembly | v1.0 | 2/2 | Complete | 2026-03-08 |
 | 5. Team Coordination | v1.0 | 3/3 | Complete | 2026-03-09 |
-| 6. PR-FAQ Ingestion | 2/2 | Complete   | 2026-03-09 | - |
+| 6. PR-FAQ Ingestion | v2.0 | 2/2 | Complete | 2026-03-09 |
 | 7. Roadmap and Feature Registry | v2.0 | 0/3 | Not started | - |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
 | 9. GitHub Issues Sync and Roadmap Refresh | v2.0 | 0/3 | Not started | - |

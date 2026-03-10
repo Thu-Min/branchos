@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, rm, readFile, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -117,6 +117,69 @@ describe('branchos init', () => {
       const gitignore = await readFile(join(tempDir, '.gitignore'), 'utf-8');
       const matches = gitignore.match(/\.branchos-runtime\//g);
       expect(matches?.length).toBe(1);
+    });
+  });
+
+  describe('init auto-installs slash commands', () => {
+    let tempHome: string;
+    let originalHome: string;
+
+    beforeEach(async () => {
+      tempHome = await mkdtemp(join(tmpdir(), 'branchos-init-install-test-'));
+      originalHome = process.env.HOME || '';
+      process.env.HOME = tempHome;
+    });
+
+    afterEach(async () => {
+      process.env.HOME = originalHome;
+      await rm(tempHome, { recursive: true, force: true });
+      vi.restoreAllMocks();
+    });
+
+    it('calls installSlashCommands after successful fresh init', async () => {
+      initGitRepo(tempDir);
+      vi.resetModules();
+      const { initHandler } = await import('../../src/cli/init.js');
+      await initHandler({ json: false, cwd: tempDir });
+
+      const commandsDir = join(tempHome, '.claude', 'commands');
+      const files = await readdir(commandsDir).catch(() => []);
+      expect(files.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(14);
+
+      const skillsDir = join(tempHome, '.claude', 'skills');
+      const skillFiles = await readdir(skillsDir).catch(() => []);
+      expect(skillFiles.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(14);
+    });
+
+    it('calls installSlashCommands on re-init (already initialized)', async () => {
+      initGitRepo(tempDir);
+      vi.resetModules();
+      const { initHandler } = await import('../../src/cli/init.js');
+
+      // First init
+      await initHandler({ json: false, cwd: tempDir });
+
+      // Clean up commands to verify they get re-installed
+      const commandsDir = join(tempHome, '.claude', 'commands');
+      const { rm: rmFile } = await import('fs/promises');
+      await rmFile(commandsDir, { recursive: true, force: true });
+
+      // Second init (already initialized path)
+      await initHandler({ json: false, cwd: tempDir });
+
+      const files = await readdir(commandsDir).catch(() => []);
+      expect(files.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(14);
+    });
+
+    it('still returns correct InitResult structure', async () => {
+      initGitRepo(tempDir);
+      vi.resetModules();
+      const { initHandler } = await import('../../src/cli/init.js');
+      const result = await initHandler({ json: true, cwd: tempDir });
+      expect(result).toEqual(expect.objectContaining({
+        success: true,
+        created: expect.any(Array),
+      }));
     });
   });
 });

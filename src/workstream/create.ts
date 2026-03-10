@@ -1,27 +1,47 @@
 import { mkdir, access } from 'fs/promises';
 import { join } from 'path';
 import { GitOps } from '../git/index.js';
-import { BRANCHOS_DIR, WORKSTREAMS_DIR } from '../constants.js';
+import { BRANCHOS_DIR, SHARED_DIR, WORKSTREAMS_DIR } from '../constants.js';
 import { slugifyBranch, isProtectedBranch } from './resolve.js';
 import { discoverWorkstreams } from './discover.js';
 import { createMeta, writeMeta } from '../state/meta.js';
 import { createInitialState, writeState } from '../state/state.js';
+import { readAllFeatures, writeFeatureFile } from '../roadmap/feature-file.js';
+import { featureBranch } from '../roadmap/slug.js';
+import { promptYesNo } from './prompt.js';
 
 export interface CreateWorkstreamResult {
   workstreamId: string;
   branch: string;
   path: string;
   created: boolean;
+  featureId?: string;
 }
 
 export async function createWorkstream(options: {
   repoRoot: string;
   nameOverride?: string;
+  featureId?: string;
 }): Promise<CreateWorkstreamResult> {
-  const { repoRoot, nameOverride } = options;
+  const { repoRoot, nameOverride, featureId } = options;
   const git = new GitOps(repoRoot);
 
-  // Get current branch
+  // Check .branchos/ exists
+  const branchosPath = join(repoRoot, BRANCHOS_DIR);
+  try {
+    await access(branchosPath);
+  } catch {
+    throw new Error(
+      'BranchOS not initialized. Run `branchos init` first.',
+    );
+  }
+
+  // Feature-linked flow
+  if (featureId) {
+    return createFeatureLinkedWorkstream(repoRoot, git, branchosPath, featureId);
+  }
+
+  // Standard flow: get current branch
   const branch = await git.getCurrentBranch();
 
   // Check protected branch
@@ -37,16 +57,6 @@ export async function createWorkstream(options: {
   if (!workstreamId) {
     throw new Error(
       'Could not derive workstream ID from branch name. Use --name <custom-name> to specify one.',
-    );
-  }
-
-  // Check .branchos/ exists
-  const branchosPath = join(repoRoot, BRANCHOS_DIR);
-  try {
-    await access(branchosPath);
-  } catch {
-    throw new Error(
-      'BranchOS not initialized. Run `branchos init` first.',
     );
   }
 
@@ -83,5 +93,104 @@ export async function createWorkstream(options: {
     branch,
     path: wsPath,
     created: true,
+  };
+}
+
+async function createFeatureLinkedWorkstream(
+  repoRoot: string,
+  git: GitOps,
+  branchosPath: string,
+  featureId: string,
+): Promise<CreateWorkstreamResult> {
+  // 1. Read features
+  const featuresDir = join(branchosPath, SHARED_DIR, 'features');
+  const features = await readAllFeatures(featuresDir);
+
+  // 2. Validate: no features
+  if (features.length === 0) {
+    throw new Error(
+      'No features found. Run `branchos plan-roadmap` to generate features first.',
+    );
+  }
+
+  // 3. Find feature by ID
+  const feature = features.find((f) => f.id === featureId);
+  if (!feature) {
+    const availableIds = features.map((f) => f.id).join(', ');
+    throw new Error(
+      `Feature ${featureId} not found. Available: ${availableIds}`,
+    );
+  }
+
+  // 4. Check not already in-progress
+  if (feature.status === 'in-progress') {
+    throw new Error(
+      `Feature ${featureId} is already in-progress (workstream: ${feature.workstream ?? 'unknown'}).`,
+    );
+  }
+
+  // 5. Generate branch name from feature title
+  const branchName = featureBranch(feature.title);
+
+  // 6. Handle branch: check if exists, create or checkout
+  const exists = await git.branchExists(branchName);
+  if (exists) {
+    const confirmed = await promptYesNo(
+      `Branch ${branchName} already exists. Use it? (y/n) `,
+    );
+    if (!confirmed) {
+      throw new Error('Aborted.');
+    }
+    await git.checkoutBranch(branchName);
+  } else {
+    await git.checkoutBranch(branchName, true);
+  }
+
+  // 7. Derive workstream ID from branch
+  const workstreamId = slugifyBranch(branchName);
+
+  // 8. Check for collision
+  const workstreamsDir = join(branchosPath, WORKSTREAMS_DIR);
+  const existing = await discoverWorkstreams(workstreamsDir);
+  if (existing.includes(workstreamId)) {
+    throw new Error(
+      `Workstream '${workstreamId}' already exists for this feature.`,
+    );
+  }
+
+  // 9. Create workstream directory
+  const wsPath = join(workstreamsDir, workstreamId);
+  await mkdir(wsPath, { recursive: true });
+
+  // 10. Write meta.json with featureId
+  const meta = createMeta(workstreamId, branchName, featureId);
+  await writeMeta(join(wsPath, 'meta.json'), meta);
+
+  // 11. Write state.json
+  const state = createInitialState();
+  await writeState(join(wsPath, 'state.json'), state);
+
+  // 12. Update feature: status='in-progress', workstream=workstreamId
+  const updatedFeature = {
+    ...feature,
+    status: 'in-progress' as const,
+    workstream: workstreamId,
+  };
+  await writeFeatureFile(featuresDir, updatedFeature);
+
+  // 13. Atomic commit: workstream dir + feature file
+  const wsRelativePath = join(BRANCHOS_DIR, WORKSTREAMS_DIR, workstreamId);
+  const featureRelPath = join(BRANCHOS_DIR, SHARED_DIR, 'features', feature.filename);
+  await git.addAndCommit(
+    [wsRelativePath, featureRelPath],
+    `chore: create workstream ${workstreamId} for feature ${featureId}`,
+  );
+
+  return {
+    workstreamId,
+    branch: branchName,
+    path: wsPath,
+    created: true,
+    featureId,
   };
 }

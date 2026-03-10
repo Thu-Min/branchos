@@ -89,7 +89,7 @@ Plans:
   2. Re-running sync updates existing issues (idempotent) rather than creating duplicates, with issue numbers stored in feature frontmatter
   3. User can run `/branchos:refresh-roadmap` after modifying the PR-FAQ and see proposed roadmap changes
   4. Roadmap refresh preserves manual edits to feature files (does not blindly overwrite human prose)
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 09-01-PLAN.md -- Foundation modules: types extension, gh CLI wrapper, similarity matching
@@ -126,5 +126,5 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 6. PR-FAQ Ingestion | v2.0 | 2/2 | Complete | 2026-03-09 |
 | 7. Roadmap and Feature Registry | v2.0 | 3/3 | Complete | 2026-03-10 |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
-| 9. GitHub Issues Sync and Roadmap Refresh | v2.0 | 0/3 | Not started | - |
+| 9. GitHub Issues Sync and Roadmap Refresh | 1/3 | In Progress|  | - |
 | 10. Slash Command Migration | v2.0 | 0/2 | Not started | - |

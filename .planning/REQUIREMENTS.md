@@ -18,7 +18,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 - [x] **ROAD-01**: User can generate ROADMAP.md from PR-FAQ via `/branchos:plan-roadmap`
 - [x] **ROAD-02**: Generated roadmap contains milestones with ordered features and dependencies
 - [x] **ROAD-03**: System generates individual feature files with acceptance criteria and branch names
-- [ ] **ROAD-04**: User can refresh roadmap when PR-FAQ changes via `/branchos:refresh-roadmap`
+- [x] **ROAD-04**: User can refresh roadmap when PR-FAQ changes via `/branchos:refresh-roadmap`
 - [ ] **ROAD-05**: Roadmap refresh preserves manual edits to feature files where possible
 
 ### Feature Registry
@@ -29,7 +29,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 
 ### GitHub Issues Sync
 
-- [ ] **GHIS-01**: User can create GitHub Issues from features via `/branchos:sync-issues` using `gh` CLI
+- [x] **GHIS-01**: User can create GitHub Issues from features via `/branchos:sync-issues` using `gh` CLI
 - [ ] **GHIS-02**: Sync is idempotent — re-running updates existing issues, stores issue number in frontmatter
 
 ### Workstream Enhancement
@@ -83,12 +83,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROAD-01 | Phase 7 | Complete |
 | ROAD-02 | Phase 7 | Complete |
 | ROAD-03 | Phase 7 | Complete |
-| ROAD-04 | Phase 9 | Pending |
+| ROAD-04 | Phase 9 | Complete |
 | ROAD-05 | Phase 9 | Pending |
 | FEAT-01 | Phase 7 | Complete |
 | FEAT-02 | Phase 7 | Complete |
 | FEAT-03 | Phase 7 | Complete |
-| GHIS-01 | Phase 9 | Pending |
+| GHIS-01 | Phase 9 | Complete |
 | GHIS-02 | Phase 9 | Pending |
 | WORK-01 | Phase 8 | Complete |
 | WORK-02 | Phase 8 | Complete |

@@ -104,7 +104,7 @@ Plans:
   1. Every v1 CLI workflow command (map-codebase, discuss, plan, execute, status, conflicts, archive) has a corresponding `/branchos:*` slash command
   2. CLI only exposes bootstrapper commands (init, install-commands) -- workflow commands removed or show deprecation warnings
   3. Slash commands work in both `commands/` and `skills/` directories for Claude Code compatibility
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 10-01-PLAN.md -- Extract 10 existing + create 4 new slash command .md files, tsup bundling, barrel export
@@ -127,4 +127,4 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 7. Roadmap and Feature Registry | v2.0 | 3/3 | Complete | 2026-03-10 |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
 | 9. GitHub Issues Sync and Roadmap Refresh | 2/3 | In Progress|  | - |
-| 10. Slash Command Migration | v2.0 | 0/2 | Not started | - |
+| 10. Slash Command Migration | 1/2 | In Progress|  | - |

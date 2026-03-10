@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Project-Level Planning
-status: completed
-stopped_at: Phase 10 context gathered
-last_updated: "2026-03-10T07:50:59.436Z"
-last_activity: 2026-03-10 -- Completed 09-03 refresh-roadmap command
+status: executing
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-03-10T08:12:14.655Z"
+last_activity: 2026-03-10 -- Completed 10-01 slash command extraction and bundling
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_plans: 12
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Multiple developers can run structured AI-assisted workflows in the same repository without corrupting each other's planning state.
-**Current focus:** Phase 9 - GitHub Issues Sync and Roadmap Refresh
+**Current focus:** Phase 10 - Slash Command Migration
 
 ## Current Position
 
-Phase: 9 of 10 (GitHub Issues Sync and Roadmap Refresh)
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-03-10 -- Completed 09-03 refresh-roadmap command
+Phase: 10 of 10 (Slash Command Migration)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-10 -- Completed 10-01 slash command extraction and bundling
 
-Progress: [██████████] 100% (3/3 plans in phase 9)
+Progress: [█████████░] 92% (11/12 plans overall)
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100% (3/3 plans in phase 9)
 | Phase 09 P01 | 4min | 2 tasks | 9 files |
 | Phase 09 P02 | 4min | 2 tasks | 4 files |
 | Phase 09 P03 | 4min | 2 tasks | 4 files |
+| Phase 10 P01 | 4min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Phase 6-02: init.ts handler pattern for CLI consistency; relative paths for git.
 - [Phase 09-02]: Sequential processing with 500ms delay to avoid GitHub API rate limits
 - [Phase 09]: Title similarity matching with 0.6 threshold for feature identity during roadmap refresh
 - [Phase 09]: Dropped features keep files with status=dropped (soft delete preserves history)
+- [Phase 10]: Character-by-character template literal unescaping for faithful .md extraction
+- [Phase 10]: Escaped backticks preserved in extracted .md files (matches runtime install-commands output)
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T07:50:59.414Z
-Stopped at: Phase 10 context gathered
+Last session: 2026-03-10T08:12:14.653Z
+Stopped at: Completed 10-01-PLAN.md
 Resume: Phase 9 complete. Continue with Phase 10 if applicable.

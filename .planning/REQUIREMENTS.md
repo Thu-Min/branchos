@@ -25,7 +25,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 
 - [x] **FEAT-01**: Feature files use YAML frontmatter (id, title, status, milestone, branch, issue) with markdown body
 - [x] **FEAT-02**: Features follow status lifecycle: unassigned → assigned → in-progress → complete
-- [ ] **FEAT-03**: User can list all features with status, milestone, and branch via `/branchos:features`
+- [x] **FEAT-03**: User can list all features with status, milestone, and branch via `/branchos:features`
 
 ### GitHub Issues Sync
 
@@ -87,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROAD-05 | Phase 9 | Pending |
 | FEAT-01 | Phase 7 | Complete |
 | FEAT-02 | Phase 7 | Complete |
-| FEAT-03 | Phase 7 | Pending |
+| FEAT-03 | Phase 7 | Complete |
 | GHIS-01 | Phase 9 | Pending |
 | GHIS-02 | Phase 9 | Pending |
 | WORK-01 | Phase 8 | Pending |

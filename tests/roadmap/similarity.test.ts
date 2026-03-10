@@ -66,10 +66,10 @@ describe('titleSimilarity', () => {
 describe('matchFeaturesByTitle', () => {
   it('matches features with similarity >= threshold', () => {
     const oldFeatures = [
-      makeFeature('F-001', 'User Authentication'),
+      makeFeature('F-001', 'User Auth'),
       makeFeature('F-002', 'Dashboard Layout'),
     ];
-    const newTitles = ['User Auth System', 'Dashboard Layout'];
+    const newTitles = ['User Auth v2', 'Dashboard Layout'];
 
     const result = matchFeaturesByTitle(oldFeatures, newTitles);
 
@@ -80,10 +80,10 @@ describe('matchFeaturesByTitle', () => {
 
   it('identifies dropped features (no match in new titles)', () => {
     const oldFeatures = [
-      makeFeature('F-001', 'User Authentication'),
+      makeFeature('F-001', 'User Auth'),
       makeFeature('F-002', 'Legacy Module'),
     ];
-    const newTitles = ['User Auth System'];
+    const newTitles = ['User Auth v2'];
 
     const result = matchFeaturesByTitle(oldFeatures, newTitles);
 
@@ -94,8 +94,8 @@ describe('matchFeaturesByTitle', () => {
   });
 
   it('identifies added features (new titles without old match)', () => {
-    const oldFeatures = [makeFeature('F-001', 'User Authentication')];
-    const newTitles = ['User Auth System', 'Brand New Feature'];
+    const oldFeatures = [makeFeature('F-001', 'User Auth')];
+    const newTitles = ['User Auth v2', 'Brand New Feature'];
 
     const result = matchFeaturesByTitle(oldFeatures, newTitles);
 
@@ -120,8 +120,8 @@ describe('matchFeaturesByTitle', () => {
   });
 
   it('respects custom threshold', () => {
-    const oldFeatures = [makeFeature('F-001', 'User Authentication')];
-    const newTitles = ['User Auth System'];
+    const oldFeatures = [makeFeature('F-001', 'User Auth')];
+    const newTitles = ['User Auth v2'];
 
     // Very high threshold - should not match
     const strict = matchFeaturesByTitle(oldFeatures, newTitles, 0.99);

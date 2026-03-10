@@ -74,11 +74,11 @@ Plans:
   1. User can run workstream creation with `--feature <id>` and the workstream is created with the feature's branch name and linked metadata
   2. Context packets for a feature-linked workstream include the feature description and acceptance criteria alongside existing repo/workstream context
   3. Feature status updates to "in-progress" when a linked workstream is created
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [ ] 08-01-PLAN.md -- Type extensions, GitOps branch methods, feature-linked workstream creation flow
+- [ ] 08-02-PLAN.md -- Context packet featureContext integration, CLI --feature flag, archive completion prompt
 
 ### Phase 9: GitHub Issues Sync and Roadmap Refresh
 **Goal**: Users can push features to GitHub Issues for team coordination and refresh the roadmap when the PR-FAQ evolves
@@ -124,7 +124,7 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 4. Context Assembly | v1.0 | 2/2 | Complete | 2026-03-08 |
 | 5. Team Coordination | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 6. PR-FAQ Ingestion | v2.0 | 2/2 | Complete | 2026-03-09 |
-| 7. Roadmap and Feature Registry | 3/3 | Complete   | 2026-03-10 | - |
+| 7. Roadmap and Feature Registry | v2.0 | 3/3 | Complete | 2026-03-10 |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
 | 9. GitHub Issues Sync and Roadmap Refresh | v2.0 | 0/3 | Not started | - |
 | 10. Slash Command Migration | v2.0 | 0/2 | Not started | - |

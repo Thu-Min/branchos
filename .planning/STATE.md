@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Project-Level Planning
-status: in-progress
-stopped_at: Completed 08-01 feature-linked workstream creation
-last_updated: "2026-03-10T05:05:16Z"
-last_activity: 2026-03-10 -- Completed 08-01 feature-linked workstream creation
+status: completed
+stopped_at: Completed 08-02 CLI integration and context wiring
+last_updated: "2026-03-10T05:16:59.181Z"
+last_activity: 2026-03-10 -- Completed 08-02 CLI integration and context wiring
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 8 of 10 (Feature-Aware Workstreams)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-03-10 -- Completed 08-01 feature-linked workstream creation
+Plan: 2 of 2 in current phase
+Status: Complete
+Last activity: 2026-03-10 -- Completed 08-02 CLI integration and context wiring
 
-Progress: [█████-----] 50% (1/2 plans in phase 8)
+Progress: [██████████] 100% (2/2 plans in phase 8)
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [█████-----] 50% (1/2 plans in phase 8)
 | Phase 07 P03 | 3min | 2 tasks | 4 files |
 | Phase 07 P02 | 4min | 2 tasks | 4 files |
 | Phase 08 P01 | 5min | 2 tasks | 9 files |
+| Phase 08 P02 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Phase 6-02: init.ts handler pattern for CLI consistency; relative paths for git.
 - [Phase 08-01]: Handle undefined as null in stringifyFrontmatter for backward compat
 - [Phase 08-01]: Separate createFeatureLinkedWorkstream function to keep standard flow unchanged
 - [Phase 08-01]: Skip protected branch check when featureId provided (user on protected branch)
+- [Phase 08]: featureContext is first in all STEP_SECTIONS arrays, appearing before Architecture/Discussion
+- [Phase 08]: Archive feature completion uses promptYesNo and includes feature file in atomic commit
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T05:05:16Z
-Stopped at: Completed 08-01 feature-linked workstream creation
+Last session: 2026-03-10T05:16:59.177Z
+Stopped at: Completed 08-02 CLI integration and context wiring
 Resume: Continue with 08-02 CLI integration

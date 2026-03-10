@@ -8,7 +8,7 @@ allowed-tools: Bash(npx branchos *)
 List all BranchOS workstreams with their current status.
 
 ```bash
-npx branchos workstream list $ARGUMENTS
+npx branchos status $ARGUMENTS
 ```
 
 ## Options

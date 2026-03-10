@@ -19,7 +19,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 - [x] **ROAD-02**: Generated roadmap contains milestones with ordered features and dependencies
 - [x] **ROAD-03**: System generates individual feature files with acceptance criteria and branch names
 - [x] **ROAD-04**: User can refresh roadmap when PR-FAQ changes via `/branchos:refresh-roadmap`
-- [ ] **ROAD-05**: Roadmap refresh preserves manual edits to feature files where possible
+- [x] **ROAD-05**: Roadmap refresh preserves manual edits to feature files where possible
 
 ### Feature Registry
 
@@ -84,7 +84,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROAD-02 | Phase 7 | Complete |
 | ROAD-03 | Phase 7 | Complete |
 | ROAD-04 | Phase 9 | Complete |
-| ROAD-05 | Phase 9 | Pending |
+| ROAD-05 | Phase 9 | Complete |
 | FEAT-01 | Phase 7 | Complete |
 | FEAT-02 | Phase 7 | Complete |
 | FEAT-03 | Phase 7 | Complete |

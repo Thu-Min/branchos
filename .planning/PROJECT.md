@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A CLI-first terminal tool for team-based development with Claude Code that brings structured phase-driven workflows (map-codebase, discuss, plan, execute) to shared repositories. BranchOS isolates planning and execution state by workstream/branch so multiple developers can run the workflow simultaneously without overwriting each other's context.
+A CLI-first terminal tool for team-based development with Claude Code that brings structured phase-driven workflows (map-codebase, discuss, plan, execute) to shared repositories. BranchOS provides a project-level planning layer — from PR-FAQ ingestion through roadmap generation, feature registry, and GitHub Issues — with workstream-scoped state isolation so multiple developers can work simultaneously.
 
 ## Core Value
 
@@ -27,31 +27,19 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 - ✓ Staleness detection for codebase map (suggest refresh when N commits behind) — v1.0
 - ✓ Prompt to create workstream when switching to unmapped branch — v1.0
 - ✓ All artifacts committed to git — v1.0
+- ✓ PR-FAQ ingestion with structure validation and content-hash change detection — v2.0
+- ✓ Roadmap generation from PR-FAQ with milestones, features, and dependencies — v2.0
+- ✓ Roadmap refresh when PR-FAQ changes (preserves manual edits) — v2.0
+- ✓ Feature registry with YAML frontmatter, status lifecycle, and acceptance criteria — v2.0
+- ✓ GitHub Issues sync from features (idempotent create/update via gh CLI) — v2.0
+- ✓ Feature-aware workstream creation with --feature flag — v2.0
+- ✓ Enhanced context assembly (feature description + acceptance criteria in packets) — v2.0
+- ✓ All CLI workflow commands migrated to `/branchos:*` slash commands — v2.0
+- ✓ CLI reduced to bootstrapper (init, install-commands) — v2.0
 
 ### Active
 
-- [ ] PR-FAQ ingestion (read PO-provided PR-FAQ.md as living document)
-- [ ] Roadmap generation from PR-FAQ
-- [ ] Roadmap refresh when PR-FAQ changes
-- [ ] Feature registry with acceptance criteria
-- [ ] GitHub Issues sync from features
-- [ ] Feature-aware workstream creation
-- [ ] Enhanced context assembly (feature context in packets)
-- [ ] Migrate all v1 CLI commands to slash-command-only
-- [ ] CLI reduced to bootstrapper (init, install slash commands)
-
-## Current Milestone: v2.0 Project-Level Planning
-
-**Goal:** Add a project-level planning layer above workstreams — from PR-FAQ ingestion through feature registry and GitHub Issues, all driven via slash commands.
-
-**Target features:**
-- PR-FAQ ingestion and change tracking
-- Roadmap generation and refresh from PR-FAQ
-- Feature registry with acceptance criteria
-- GitHub Issues sync
-- Feature-aware workstream creation
-- Enhanced context assembly with feature context
-- Full migration to slash-command-only architecture
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -63,32 +51,39 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 - Module-level conflict detection — file-level only (proven sufficient in v1.0)
 - GSD command compatibility — own namespace (`branchos` not `/gsd`)
 - Undo/rollback of workstream state — git already provides this
+- Bidirectional GitHub issue sync — defer to v3+, depends on one-way sync working well first
+- Auto-detect PR-FAQ changes — explicit `/branchos:refresh-roadmap` instead
+- Assignment system in BranchOS — GitHub already has assignment, labels, boards
+- Auto-create workstreams from features — removes developer agency
 
 ## Context
 
-Shipped v1.0 with 5,822 LOC TypeScript across 127 files.
-Tech stack: Node.js, TypeScript, Commander, simple-git, tsup, vitest.
-29 requirements satisfied across 5 phases in 3 days.
-All phase verifications passed. 219 tests passing.
+Shipped v2.0 with 10,870 LOC TypeScript.
+Tech stack: Node.js 20+, TypeScript, Commander, simple-git, tsup, vitest.
+46 requirements satisfied across 10 phases (v1.0 + v2.0).
+14 slash commands, CLI bootstrapper-only architecture.
 
 ### Two-Layer State Model
 
 **Shared repo layer** (`.branchos/shared/`):
 - Codebase map, architecture summary, conventions, repo-level decisions
-- Updated via `branchos map-codebase`, with staleness detection
+- PR-FAQ, ROADMAP.md, feature files
+- Updated via `branchos map-codebase` / slash commands, with staleness detection
 
 **Workstream layer** (`.branchos/workstreams/<id>/`):
 - Branch metadata, discuss/plan/execute artifacts, execution state, blockers
+- Feature link (optional) with acceptance criteria
 - Scoped to one feature/branch/task, isolated from other workstreams
 
 ### Context Packet Model
 
 When Claude Code runs a slash command, BranchOS assembles context from:
 1. Shared repo baseline
-2. Current workstream metadata
-3. Current branch diff summary
-4. Current plan and execution state
-5. Relevant decisions only
+2. Feature description and acceptance criteria (if linked)
+3. Current workstream metadata
+4. Current branch diff summary
+5. Current plan and execution state
+6. Relevant decisions only
 
 ## Constraints
 
@@ -116,10 +111,14 @@ When Claude Code runs a slash command, BranchOS assembles context from:
 | Chained schema migration (v0->v1->v2) | All schema versions migrate correctly through intermediate steps | ✓ Good |
 | Pure context assembly function | No I/O in assembleContext for easy testing; callers resolve data | ✓ Good |
 | ensureWorkstream gate on commands | Single integration point prevents workstream-less command execution | ✓ Good |
-| Slash-command-only architecture | All workflow commands via `/branchos:*` in Claude Code; CLI reduced to bootstrapper | — Pending |
-| PR-FAQ as input, not generated | Product Owner provides PR-FAQ; BranchOS ingests and tracks changes | — Pending |
-| Explicit refresh-roadmap command | No auto-detection of PR-FAQ drift; team runs `/branchos:refresh-roadmap` when ready | — Pending |
-| GitHub Issues for assignment | Don't rebuild what exists; GitHub has assignment, labels, boards, discussion | — Pending |
+| Slash-command-only architecture | All workflow commands via `/branchos:*` in Claude Code; CLI reduced to bootstrapper | ✓ Good |
+| PR-FAQ as input, not generated | Product Owner provides PR-FAQ; BranchOS ingests and tracks changes | ✓ Good |
+| Explicit refresh-roadmap command | No auto-detection of PR-FAQ drift; team runs `/branchos:refresh-roadmap` when ready | ✓ Good |
+| GitHub Issues for assignment | Don't rebuild what exists; GitHub has assignment, labels, boards, discussion | ✓ Good |
+| Hand-rolled YAML frontmatter parser | No gray-matter dependency; simple, tested, zero-dep | ✓ Good |
+| execFile over exec for gh CLI | Prevents shell injection via argument arrays | ✓ Good |
+| Title similarity matching for refresh | Greedy best-match with 0.6 threshold; simple, deterministic, no dependency | ✓ Good |
+| Soft delete for dropped features | Files kept with status=dropped; preserves history | ✓ Good |
 
 ---
-*Last updated: 2026-03-09 after v2.0 milestone started*
+*Last updated: 2026-03-10 after v2.0 milestone completed*

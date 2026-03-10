@@ -1,18 +1,21 @@
 # Milestones
 
-## v2.0 Project-Level Planning (In Progress)
+## v2.0 Project-Level Planning (Shipped: 2026-03-10)
 
-**Phases:** 5 (Phases 6-10) | **Plans:** ~12 (TBD) | **Requirements:** 17
-**Status:** Roadmap created, ready to plan Phase 6
+**Phases:** 5 (Phases 6-10) | **Plans:** 12 | **Requirements:** 17/17
+**Files changed:** 109 | **Lines:** +12,287 / -923 | **Codebase:** 10,870 LOC TypeScript
+**Timeline:** 3 days (2026-03-07 → 2026-03-10)
+**Git range:** feat(06-01) → feat(10-02)
 
-**Goal:** Add a project-level planning layer above workstreams -- from PR-FAQ ingestion through feature registry and GitHub Issues, all driven via slash commands.
+**Key accomplishments:**
+1. PR-FAQ ingestion with structure validation and content-hash change detection
+2. Roadmap generation with milestones, features, dependencies, and branch names
+3. Feature registry with YAML frontmatter, status lifecycle, and CLI listing
+4. Feature-aware workstream creation with acceptance criteria in context packets
+5. GitHub Issues sync (idempotent create/update) and roadmap refresh from PR-FAQ changes
+6. Full slash command migration — CLI reduced to bootstrapper, 14 slash commands
 
-**Phases:**
-1. Phase 6: PR-FAQ Ingestion (PRFAQ-01, PRFAQ-02, PRFAQ-03)
-2. Phase 7: Roadmap Generation and Feature Registry (ROAD-01, ROAD-02, ROAD-03, FEAT-01, FEAT-02, FEAT-03)
-3. Phase 8: Feature-Aware Workstreams (WORK-01, WORK-02)
-4. Phase 9: GitHub Issues Sync and Roadmap Refresh (GHIS-01, GHIS-02, ROAD-04, ROAD-05)
-5. Phase 10: Slash Command Migration (MIGR-01, MIGR-02)
+**Archive:** `.planning/milestones/v2.0-ROADMAP.md`, `v2.0-REQUIREMENTS.md`
 
 ---
 

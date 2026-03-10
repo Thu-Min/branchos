@@ -164,6 +164,59 @@ describe('GitOps', () => {
     });
   });
 
+  describe('branchExists', () => {
+    it('returns false for non-existent branch', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      expect(await git.branchExists('nonexistent')).toBe(false);
+    });
+
+    it('returns true for existing branch', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+      execSync('git checkout -b feature/test-branch', { cwd: tempDir, stdio: 'pipe' });
+
+      const git = new GitOps(tempDir);
+      expect(await git.branchExists('feature/test-branch')).toBe(true);
+    });
+  });
+
+  describe('checkoutBranch', () => {
+    it('creates and checks out a new branch when create=true', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+
+      const git = new GitOps(tempDir);
+      await git.checkoutBranch('feature/new-branch', true);
+
+      const current = await git.getCurrentBranch();
+      expect(current).toBe('feature/new-branch');
+    });
+
+    it('checks out an existing branch when create=false', async () => {
+      execSync('git init', { cwd: tempDir });
+      execSync('git config user.email "test@test.com"', { cwd: tempDir });
+      execSync('git config user.name "Test"', { cwd: tempDir });
+      execSync('git commit --allow-empty -m "initial"', { cwd: tempDir });
+      execSync('git checkout -b feature/existing', { cwd: tempDir, stdio: 'pipe' });
+      execSync('git checkout -', { cwd: tempDir, stdio: 'pipe' });
+
+      const git = new GitOps(tempDir);
+      await git.checkoutBranch('feature/existing');
+
+      const current = await git.getCurrentBranch();
+      expect(current).toBe('feature/existing');
+    });
+  });
+
   describe('getMergeBase', () => {
     it('returns the merge-base commit hash between HEAD and target branch', async () => {
       execSync('git init', { cwd: tempDir });

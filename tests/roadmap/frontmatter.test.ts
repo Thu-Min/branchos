@@ -117,6 +117,92 @@ describe('stringifyFrontmatter', () => {
   });
 });
 
+describe('workstream field', () => {
+  it('stringifyFrontmatter outputs workstream: null', () => {
+    const data = {
+      id: 'F-001',
+      title: 'User Auth',
+      status: 'unassigned' as const,
+      milestone: 'M1',
+      branch: 'feature/user-auth',
+      issue: null,
+      workstream: null,
+    };
+
+    const result = stringifyFrontmatter(data);
+    expect(result).toContain('workstream: null');
+  });
+
+  it('stringifyFrontmatter outputs workstream string value', () => {
+    const data = {
+      id: 'F-001',
+      title: 'User Auth',
+      status: 'in-progress' as const,
+      milestone: 'M1',
+      branch: 'feature/user-auth',
+      issue: null,
+      workstream: 'user-auth',
+    };
+
+    const result = stringifyFrontmatter(data);
+    expect(result).toContain('workstream: user-auth');
+  });
+
+  it('parseFrontmatter reads workstream: null', () => {
+    const input = [
+      '---',
+      'id: F-001',
+      'title: User Auth',
+      'status: unassigned',
+      'milestone: M1',
+      'branch: feature/user-auth',
+      'issue: null',
+      'workstream: null',
+      '---',
+      '',
+      'Body',
+    ].join('\n');
+
+    const result = parseFrontmatter(input);
+    expect(result.data.workstream).toBeNull();
+  });
+
+  it('parseFrontmatter reads workstream string value', () => {
+    const input = [
+      '---',
+      'id: F-002',
+      'title: Dashboard',
+      'status: in-progress',
+      'milestone: M2',
+      'branch: feature/dashboard',
+      'issue: 42',
+      'workstream: dashboard-ui',
+      '---',
+      '',
+      'Body',
+    ].join('\n');
+
+    const result = parseFrontmatter(input);
+    expect(result.data.workstream).toBe('dashboard-ui');
+  });
+
+  it('round-trips with workstream field', () => {
+    const data = {
+      id: 'F-005',
+      title: 'Payments',
+      status: 'in-progress' as const,
+      milestone: 'M3',
+      branch: 'feature/payments',
+      issue: 10,
+      workstream: 'payments',
+    };
+
+    const stringified = stringifyFrontmatter(data);
+    const parsed = parseFrontmatter(stringified + '\n\nBody');
+    expect(parsed.data).toEqual(data);
+  });
+});
+
 describe('FEATURE_STATUSES', () => {
   it('contains exactly the four lifecycle statuses', () => {
     expect(FEATURE_STATUSES).toEqual([

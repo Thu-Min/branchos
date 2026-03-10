@@ -80,6 +80,7 @@ describe('stringifyFrontmatter', () => {
       milestone: 'M1',
       branch: 'feature/user-auth',
       issue: null,
+      workstream: null,
     };
 
     const stringified = stringifyFrontmatter(data);
@@ -95,6 +96,7 @@ describe('stringifyFrontmatter', () => {
       milestone: 'M1',
       branch: 'feature/test',
       issue: null,
+      workstream: null,
     };
 
     const result = stringifyFrontmatter(data);
@@ -109,6 +111,7 @@ describe('stringifyFrontmatter', () => {
       milestone: 'M2',
       branch: 'feature/feature-ten',
       issue: 99,
+      workstream: null,
     };
 
     const stringified = stringifyFrontmatter(data);

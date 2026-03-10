@@ -18,6 +18,7 @@ export async function writeFeatureFile(dir: string, feature: Feature): Promise<s
     milestone: feature.milestone,
     branch: feature.branch,
     issue: feature.issue,
+    workstream: feature.workstream ?? null,
   });
 
   const content = `${frontmatter}\n\n${feature.body}\n`;

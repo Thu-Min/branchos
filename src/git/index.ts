@@ -95,6 +95,19 @@ export class GitOps {
     }
   }
 
+  async branchExists(branchName: string): Promise<boolean> {
+    const result = await this.git.branchLocal();
+    return result.all.includes(branchName);
+  }
+
+  async checkoutBranch(branchName: string, create: boolean = false): Promise<void> {
+    if (create) {
+      await this.git.checkoutLocalBranch(branchName);
+    } else {
+      await this.git.checkout(branchName);
+    }
+  }
+
   async isBranchMerged(branch: string, into: string): Promise<boolean> {
     try {
       await this.git.raw(['merge-base', '--is-ancestor', branch, into]);

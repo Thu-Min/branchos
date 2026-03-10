@@ -14,6 +14,7 @@ export interface FeatureFrontmatter {
   milestone: string;
   branch: string;
   issue: number | null;
+  workstream: string | null;
 }
 
 export interface Feature extends FeatureFrontmatter {

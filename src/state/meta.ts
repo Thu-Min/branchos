@@ -8,11 +8,12 @@ export interface WorkstreamMeta {
   status: 'active' | 'archived';
   createdAt: string;
   updatedAt: string;
+  featureId?: string;
 }
 
-export function createMeta(workstreamId: string, branch: string): WorkstreamMeta {
+export function createMeta(workstreamId: string, branch: string, featureId?: string): WorkstreamMeta {
   const now = new Date().toISOString();
-  return {
+  const meta: WorkstreamMeta = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     workstreamId,
     branch,
@@ -20,6 +21,10 @@ export function createMeta(workstreamId: string, branch: string): WorkstreamMeta
     createdAt: now,
     updatedAt: now,
   };
+  if (featureId !== undefined) {
+    meta.featureId = featureId;
+  }
+  return meta;
 }
 
 export async function readMeta(filePath: string): Promise<WorkstreamMeta> {

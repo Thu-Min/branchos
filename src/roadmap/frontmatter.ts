@@ -7,6 +7,7 @@ const FIELD_ORDER: (keyof FeatureFrontmatter)[] = [
   'milestone',
   'branch',
   'issue',
+  'workstream',
 ];
 
 /**
@@ -63,7 +64,7 @@ export function stringifyFrontmatter(data: FeatureFrontmatter): string {
   const lines = ['---'];
   for (const key of FIELD_ORDER) {
     const value = data[key];
-    lines.push(`${key}: ${value === null ? 'null' : value}`);
+    lines.push(`${key}: ${value === null || value === undefined ? 'null' : value}`);
   }
   lines.push('---');
   return lines.join('\n');

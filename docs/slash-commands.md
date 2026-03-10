@@ -1,14 +1,16 @@
 # Slash Commands
 
-BranchOS provides 5 slash commands for Claude Code that integrate AI-assisted workflows directly into your development environment.
+BranchOS provides 14 slash commands for Claude Code that integrate AI-assisted workflows directly into your development environment.
 
 ## Installation
+
+Slash commands are installed automatically when you run `branchos init`. To reinstall manually:
 
 ```bash
 branchos install-commands
 ```
 
-This installs markdown command files to `~/.claude/commands/`. Restart Claude Code after installation.
+This installs command files to both `~/.claude/commands/` and `~/.claude/skills/`. Restart Claude Code after installation.
 
 To remove them:
 
@@ -16,7 +18,7 @@ To remove them:
 branchos install-commands --uninstall
 ```
 
-## Available Commands
+## Core Workflow Commands
 
 ### `/branchos:map-codebase`
 
@@ -59,7 +61,7 @@ Load workstream context for the current phase.
 - `step` (optional) - Force a specific step: `discuss`, `plan`, or `execute`
 
 **What it does:**
-Runs `branchos context` and outputs a structured context packet containing:
+Outputs a structured context packet containing:
 - Workstream metadata (ID, branch, phase, step, statuses)
 - Relevant codebase map sections
 - Branch diff summary
@@ -103,8 +105,6 @@ Create or update discussion context for the current phase.
 6. Records any decisions in `decisions.md`
 7. Auto-commits
 
-**Note:** If a `discuss.md` already exists for the target phase, Claude will ask for confirmation before overwriting.
-
 ---
 
 ### `/branchos:plan-phase`
@@ -127,10 +127,7 @@ Create an implementation plan for the current phase.
 1. Resolves the workstream and target phase
 2. Reads `discuss.md` for context (warns if missing)
 3. Analyzes codebase map for architecture and conventions
-4. Generates `plan.md` with:
-   - Objective
-   - Tasks with affected files, dependencies, and risks
-   - Consolidated affected files list
+4. Generates `plan.md` with objective, tasks, affected files, dependencies, and risks
 5. Captures `planBaseline` (HEAD commit hash) for drift detection
 6. Updates `state.json` and auto-commits
 
@@ -156,7 +153,74 @@ Track execution progress for the current phase.
 6. Updates `state.json` with execution status
 7. Auto-commits
 
-**Tip:** Run this command multiple times during implementation to keep the tracking state current. It merges new information rather than discarding previous data.
+**Tip:** Run this command multiple times during implementation to keep the tracking state current.
+
+---
+
+## Workstream Management Commands
+
+### `/branchos:create-workstream`
+
+Create a new workstream for the current branch.
+
+**Usage:**
+```
+/branchos:create-workstream [--name <id>] [--feature <id>] [--issue #N]
+```
+
+Auto-derives the workstream ID from the branch name by stripping prefixes (`feature/`, `fix/`, etc.) and slugifying.
+
+---
+
+### `/branchos:list-workstreams`
+
+List all workstreams and their status.
+
+---
+
+### `/branchos:status`
+
+Show a consolidated dashboard with workstream status, map freshness, drift, and conflicts.
+
+---
+
+### `/branchos:archive`
+
+Archive a completed workstream after its branch has been merged.
+
+---
+
+## Project Planning Commands
+
+### `/branchos:ingest-prfaq`
+
+Ingest an Amazon-style PR-FAQ document for project planning. Parses the document and stores structured data for roadmap generation.
+
+---
+
+### `/branchos:plan-roadmap`
+
+Generate a roadmap with milestones and features from an ingested PR-FAQ. Creates feature definitions with acceptance criteria.
+
+---
+
+### `/branchos:refresh-roadmap`
+
+Refresh the roadmap and feature registry when the PR-FAQ has been updated.
+
+---
+
+### `/branchos:features`
+
+List features from the feature registry or view details for a specific feature.
+
+---
+
+### `/branchos:sync-issues`
+
+Push feature definitions to GitHub Issues for team coordination and assignment.
+
+---
 
 ## Workflow Example
 

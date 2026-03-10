@@ -40,25 +40,9 @@ This creates the `.branchos/` directory structure:
 └── workstreams/             # Per-branch workstream state
 ```
 
-It also adds `.branchos-runtime/` to your `.gitignore` and auto-commits the initialization.
+It also adds `.branchos-runtime/` to your `.gitignore`, auto-commits the initialization, and installs all 14 slash commands into Claude Code.
 
-## Step 2: Install Claude Code Slash Commands
-
-```bash
-branchos install-commands
-```
-
-This installs 5 slash commands into `~/.claude/commands/` for use in Claude Code:
-
-- `/branchos:map-codebase` - Generate codebase map
-- `/branchos:context` - Load workstream context
-- `/branchos:discuss-phase` - Create discussion context
-- `/branchos:plan-phase` - Create implementation plan
-- `/branchos:execute-phase` - Track execution progress
-
-Restart Claude Code after installing commands.
-
-## Step 3: Generate the Codebase Map
+## Step 2: Generate the Codebase Map
 
 In Claude Code, run:
 
@@ -78,22 +62,45 @@ This analyzes your repository and generates 5 shared knowledge files in `.branch
 
 These files are shared across all workstreams and provide Claude with deep repository understanding.
 
+## Step 3: (Optional) Set Up Project-Level Planning
+
+If you have an Amazon-style PR-FAQ document, you can use it to drive planning:
+
+```
+# Ingest your PR-FAQ
+/branchos:ingest-prfaq
+
+# Generate roadmap with milestones and features
+/branchos:plan-roadmap
+
+# View the feature registry
+/branchos:features
+
+# Sync features to GitHub Issues for team assignment
+/branchos:sync-issues
+```
+
 ## Step 4: Create a Feature Branch and Workstream
 
 ```bash
 # Create and switch to a feature branch
 git checkout -b feature/add-auth
+```
 
-# Create a BranchOS workstream for this branch
-branchos workstream create
+In Claude Code:
+
+```
+/branchos:create-workstream
 ```
 
 BranchOS automatically derives a workstream ID from the branch name. `feature/add-auth` becomes `add-auth`.
 
-You can also specify a custom name:
+You can also specify a custom name or link to a feature:
 
-```bash
-branchos workstream create --name auth-system
+```
+/branchos:create-workstream --name auth-system
+/branchos:create-workstream --feature FEAT-01
+/branchos:create-workstream --issue #42
 ```
 
 ## Step 5: Run the Phase Workflow
@@ -130,10 +137,17 @@ This compares the plan against actual git changes and generates an `execute.md` 
 
 ## Step 6: Monitor Progress
 
-```bash
-# View all workstreams
-branchos status
+```
+# View all workstreams and their status
+/branchos:status
 
+# List all workstreams
+/branchos:list-workstreams
+```
+
+From the terminal:
+
+```bash
 # Check if codebase map needs refreshing
 branchos map-status
 

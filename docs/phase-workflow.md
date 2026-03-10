@@ -25,11 +25,6 @@ In Claude Code:
 /branchos:discuss-phase
 ```
 
-Or from the terminal:
-```bash
-branchos discuss
-```
-
 **What happens:**
 1. BranchOS resolves your workstream from the current branch
 2. Claude gathers context from the codebase map, previous decisions, and prior phases
@@ -58,11 +53,6 @@ In Claude Code:
 /branchos:plan-phase
 ```
 
-Or from the terminal:
-```bash
-branchos plan
-```
-
 **What happens:**
 1. Claude reads the `discuss.md` for context
 2. Analyzes the codebase map to understand architecture and conventions
@@ -89,11 +79,6 @@ branchos plan
 After implementing the planned changes, run in Claude Code:
 ```
 /branchos:execute-phase
-```
-
-Or from the terminal:
-```bash
-branchos execute
 ```
 
 **What happens:**

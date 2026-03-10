@@ -1,16 +1,16 @@
 # BranchOS
 
-Branch-based AI-assisted development workflow management.
+Branch-based AI-assisted development workflow management for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ## The Problem
 
-When multiple developers use AI-assisted tools (like Claude Code) in the same repository, their planning and execution state collides. AI-generated plans, decisions, and progress tracking get overwritten, become outdated, or conflict with each other. Each developer's AI loses track of what has been done and what remains for their specific work.
+When multiple developers use AI-assisted tools (like Claude Code) in the same repository, their planning and execution state collides. AI-generated plans, decisions, and progress tracking get overwritten, become outdated, or conflict with each other.
 
 ## The Solution
 
 BranchOS isolates planning and execution state **per Git branch** while maintaining a shared understanding of the codebase. Each developer gets their own workstream with independent phases, plans, and progress tracking — without corrupting anyone else's state.
 
-**Shared knowledge** (codebase architecture, conventions, tech stack) lives in one place for all workstreams. **Isolated state** (discussion context, implementation plans, execution tracking, decisions) lives per workstream. BranchOS also detects file-level conflicts between workstreams before they become merge problems.
+**v2** adds a **project-level planning layer**: ingest an Amazon-style PR-FAQ, generate a roadmap with milestones and features, sync to GitHub Issues, and create feature-aware workstreams — all through Claude Code slash commands.
 
 ## Installation
 
@@ -26,17 +26,9 @@ npm install -g branchos
 branchos init
 ```
 
-Creates the `.branchos/` directory structure and auto-commits.
+Creates the `.branchos/` directory structure, auto-commits, and installs all slash commands into Claude Code.
 
-### 2. Install Claude Code slash commands
-
-```bash
-branchos install-commands
-```
-
-Installs 5 slash commands (`/branchos:map-codebase`, `/branchos:context`, `/branchos:discuss-phase`, `/branchos:plan-phase`, `/branchos:execute-phase`) into Claude Code. Restart Claude Code after installing.
-
-### 3. Generate the codebase map
+### 2. Generate the codebase map
 
 In Claude Code, run:
 
@@ -46,14 +38,32 @@ In Claude Code, run:
 
 This analyzes your repository and generates shared knowledge files (architecture, modules, conventions, stack, concerns) that all workstreams can reference.
 
+### 3. (Optional) Set up project-level planning
+
+```
+# Ingest a PR-FAQ document
+/branchos:ingest-prfaq
+
+# Generate roadmap with milestones and features
+/branchos:plan-roadmap
+
+# Sync features to GitHub Issues
+/branchos:sync-issues
+```
+
 ### 4. Create a feature branch and workstream
 
 ```bash
 git checkout -b feature/add-auth
-branchos workstream create
 ```
 
-BranchOS auto-derives the workstream ID from the branch name (`feature/add-auth` → `add-auth`).
+In Claude Code:
+
+```
+/branchos:create-workstream
+```
+
+BranchOS auto-derives the workstream ID from the branch name (`feature/add-auth` → `add-auth`). You can link to a feature with `--feature <id>` or `--issue #N`.
 
 ### 5. Run the three-phase workflow
 
@@ -74,10 +84,23 @@ Each phase follows a **Discuss → Plan → Execute** cycle:
 
 ### 6. Monitor and manage
 
-```bash
+```
 # View all workstreams and their status
-branchos status
+/branchos:status
 
+# List all workstreams
+/branchos:list-workstreams
+
+# View features from the feature registry
+/branchos:features
+
+# Archive a completed workstream
+/branchos:archive
+```
+
+From the terminal:
+
+```bash
 # Check if codebase map needs refreshing
 branchos map-status
 
@@ -86,38 +109,37 @@ branchos check-drift
 
 # Detect file conflicts between active workstreams
 branchos detect-conflicts
-
-# Archive a completed workstream
-branchos archive <workstream-id>
 ```
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `branchos init` | Initialize BranchOS in a Git repository |
-| `branchos workstream create [--name]` | Create a workstream for the current branch |
+| `branchos init` | Initialize BranchOS and install slash commands |
+| `branchos install-commands [--uninstall]` | Install/remove Claude Code slash commands |
 | `branchos status [--all]` | Show all workstreams and their state |
-| `branchos discuss [phase]` | Create discussion context for a phase |
-| `branchos plan [phase]` | Create implementation plan for a phase |
-| `branchos execute [phase]` | Track execution progress for a phase |
-| `branchos context [step]` | Assemble context packet for Claude Code |
+| `branchos map-status` | Check codebase map freshness |
 | `branchos check-drift [--phase N]` | Compare planned vs actual changes |
 | `branchos detect-conflicts [--all]` | Find file conflicts between workstreams |
-| `branchos map-status` | Check codebase map freshness |
-| `branchos archive <id> [--force]` | Archive a completed workstream |
-| `branchos unarchive <id>` | Restore an archived workstream |
-| `branchos install-commands [--uninstall]` | Install/remove Claude Code slash commands |
 
 ## Claude Code Slash Commands
 
 | Command | Description |
 |---------|-------------|
 | `/branchos:map-codebase` | Generate or refresh the shared codebase map |
-| `/branchos:context [step]` | Load workstream context for the current phase |
-| `/branchos:discuss-phase [N]` | Create discussion context for a phase |
-| `/branchos:plan-phase [N]` | Create implementation plan for a phase |
-| `/branchos:execute-phase [N]` | Track execution progress for a phase |
+| `/branchos:context` | Load workstream context for the current phase |
+| `/branchos:create-workstream` | Create a workstream for the current branch |
+| `/branchos:list-workstreams` | List all workstreams and their status |
+| `/branchos:discuss-phase` | Create discussion context for a phase |
+| `/branchos:plan-phase` | Create implementation plan for a phase |
+| `/branchos:execute-phase` | Track execution progress for a phase |
+| `/branchos:status` | Show dashboard with workstream status, drift, and conflicts |
+| `/branchos:archive` | Archive a completed workstream |
+| `/branchos:ingest-prfaq` | Ingest a PR-FAQ document for project planning |
+| `/branchos:plan-roadmap` | Generate roadmap and features from ingested PR-FAQ |
+| `/branchos:refresh-roadmap` | Refresh roadmap when the PR-FAQ has been updated |
+| `/branchos:features` | List features or view feature details |
+| `/branchos:sync-issues` | Push feature definitions to GitHub Issues |
 
 ## Documentation
 
@@ -132,7 +154,7 @@ branchos archive <workstream-id>
 
 - Node.js >= 20
 - Git repository
-- Claude Code (for slash commands)
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (for slash commands)
 
 ## License
 

@@ -14,6 +14,9 @@ import {
   type WorkflowStep,
 } from '../context/assemble.js';
 import { error } from '../output/index.js';
+import { readMeta } from '../state/meta.js';
+import { readAllFeatures } from '../roadmap/feature-file.js';
+import type { Feature } from '../roadmap/types.js';
 import {
   BRANCHOS_DIR,
   SHARED_DIR,
@@ -26,6 +29,20 @@ import {
 export interface ContextOptions {
   json?: boolean;
   cwd?: string;
+}
+
+function formatFeatureContext(feature: Feature): string {
+  const header = [
+    '| Field | Value |',
+    '|-------|-------|',
+    `| Feature | ${feature.id} |`,
+    `| Title | ${feature.title} |`,
+    `| Status | ${feature.status} |`,
+    `| Milestone | ${feature.milestone} |`,
+    `| Branch | ${feature.branch} |`,
+  ].join('\n');
+
+  return feature.body ? `${header}\n\n${feature.body}` : header;
 }
 
 async function readFileOrNull(filePath: string): Promise<string | null> {
@@ -49,6 +66,23 @@ export async function contextHandler(
       error('No workstream found for current branch.', { json: true });
     }
     return null;
+  }
+
+  // Load feature context if workstream is linked to a feature
+  let featureContext: string | null = null;
+  try {
+    const metaPath = join(workstream.path, 'meta.json');
+    const meta = await readMeta(metaPath);
+    if (meta.featureId) {
+      const featuresDir = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, 'features');
+      const features = await readAllFeatures(featuresDir);
+      const feature = features.find((f) => f.id === meta.featureId);
+      if (feature) {
+        featureContext = formatFeatureContext(feature);
+      }
+    }
+  } catch {
+    // Feature file missing/unreadable - proceed without feature context
   }
 
   const statePath = join(workstream.path, 'state.json');
@@ -150,6 +184,7 @@ export async function contextHandler(
     decisions,
     branchDiffNameStatus,
     branchDiffStat,
+    featureContext,
   };
 
   const packet = assembleContext(input);

@@ -30,13 +30,14 @@ export interface AssemblyInput {
   decisions: string | null;
   branchDiffNameStatus: string | null;
   branchDiffStat: string | null;
+  featureContext: string | null;
 }
 
 const STEP_SECTIONS: Record<WorkflowStep, string[]> = {
-  discuss: ['architecture', 'conventions', 'decisions', 'branchDiff'],
-  plan: ['discuss', 'modules', 'conventions', 'decisions', 'branchDiff'],
-  execute: ['plan', 'execute', 'branchDiff', 'decisions'],
-  fallback: ['architecture', 'conventions', 'decisions', 'branchDiff', 'hint'],
+  discuss: ['featureContext', 'architecture', 'conventions', 'decisions', 'branchDiff'],
+  plan: ['featureContext', 'discuss', 'modules', 'conventions', 'decisions', 'branchDiff'],
+  execute: ['featureContext', 'plan', 'execute', 'branchDiff', 'decisions'],
+  fallback: ['featureContext', 'architecture', 'conventions', 'decisions', 'branchDiff', 'hint'],
 };
 
 export function detectStep(phase: Phase | null): WorkflowStep {
@@ -105,6 +106,8 @@ function buildBranchDiffSection(nameStatus: string | null, stat: string | null):
 
 function getSection(key: string, input: AssemblyInput): ContextSection {
   switch (key) {
+    case 'featureContext':
+      return buildSection('Feature Context', input.featureContext, '');
     case 'architecture':
       return buildSection(
         'Architecture',
@@ -165,6 +168,7 @@ export function assembleContext(input: AssemblyInput): ContextPacket {
   const sections: ContextSection[] = [];
 
   for (const key of sectionKeys) {
+    if (key === 'featureContext' && !input.featureContext) continue;
     sections.push(getSection(key, input));
   }
 

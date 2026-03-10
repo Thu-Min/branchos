@@ -35,6 +35,7 @@ function makeInput(overrides: Partial<AssemblyInput> = {}): AssemblyInput {
     decisions: '# Decisions\nSome decisions content',
     branchDiffNameStatus: 'M\tsrc/foo.ts\nA\tsrc/bar.ts',
     branchDiffStat: ' src/foo.ts | 10 +++++-----\n src/bar.ts |  5 +++++\n 2 files changed, 10 insertions(+), 5 deletions(-)',
+    featureContext: null,
     ...overrides,
   };
 }
@@ -249,6 +250,79 @@ describe('assembleContext', () => {
 
       expect(result.raw).toContain('M\tsrc/foo.ts');
       expect(result.raw).toContain('2 files changed');
+    });
+  });
+
+  describe('featureContext', () => {
+    it('produces NO Feature Context section when featureContext is null', () => {
+      const input = makeInput({ detectedStep: 'discuss', featureContext: null });
+      const result = assembleContext(input);
+
+      expect(result.raw).not.toContain('Feature Context');
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).not.toContain('Feature Context');
+    });
+
+    it('produces Feature Context section when featureContext is provided', () => {
+      const input = makeInput({
+        detectedStep: 'discuss',
+        featureContext: '## Acceptance Criteria\n- works',
+      });
+      const result = assembleContext(input);
+
+      expect(result.raw).toContain('Feature Context');
+      expect(result.raw).toContain('## Acceptance Criteria');
+      expect(result.raw).toContain('- works');
+    });
+
+    it('Feature Context section appears FIRST in sections for discuss step', () => {
+      const input = makeInput({
+        detectedStep: 'discuss',
+        featureContext: 'Feature body content',
+      });
+      const result = assembleContext(input);
+
+      expect(result.sections[0].name).toBe('Feature Context');
+      expect(result.sections[0].content).toBe('Feature body content');
+    });
+
+    it('Feature Context section appears FIRST in sections for plan step', () => {
+      const input = makeInput({
+        detectedStep: 'plan',
+        featureContext: 'Feature body content',
+      });
+      const result = assembleContext(input);
+
+      expect(result.sections[0].name).toBe('Feature Context');
+    });
+
+    it('Feature Context section appears FIRST in sections for execute step', () => {
+      const input = makeInput({
+        detectedStep: 'execute',
+        featureContext: 'Feature body content',
+      });
+      const result = assembleContext(input);
+
+      expect(result.sections[0].name).toBe('Feature Context');
+    });
+
+    it('Feature Context section appears FIRST in sections for fallback step', () => {
+      const input = makeInput({
+        detectedStep: 'fallback',
+        featureContext: 'Feature body content',
+      });
+      const result = assembleContext(input);
+
+      expect(result.sections[0].name).toBe('Feature Context');
+    });
+
+    it('non-feature workstreams produce identical output as before', () => {
+      const input = makeInput({ detectedStep: 'discuss', featureContext: null });
+      const result = assembleContext(input);
+
+      // Should have exactly the same sections as before: architecture, conventions, decisions, branchDiff
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).toEqual(['Architecture', 'Conventions', 'Decisions', 'Branch Diff']);
     });
   });
 

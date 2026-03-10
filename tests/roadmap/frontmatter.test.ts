@@ -207,12 +207,13 @@ describe('workstream field', () => {
 });
 
 describe('FEATURE_STATUSES', () => {
-  it('contains exactly the four lifecycle statuses', () => {
+  it('contains all lifecycle statuses including dropped', () => {
     expect(FEATURE_STATUSES).toEqual([
       'unassigned',
       'assigned',
       'in-progress',
       'complete',
+      'dropped',
     ]);
   });
 });

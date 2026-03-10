@@ -40,7 +40,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 ### Slash Command Migration
 
 - [x] **MIGR-01**: All v1 CLI workflow commands migrated to `/branchos:*` slash commands
-- [ ] **MIGR-02**: CLI reduced to bootstrapper commands only (init, install-commands)
+- [x] **MIGR-02**: CLI reduced to bootstrapper commands only (init, install-commands)
 
 ## Future Requirements
 
@@ -93,7 +93,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WORK-01 | Phase 8 | Complete |
 | WORK-02 | Phase 8 | Complete |
 | MIGR-01 | Phase 10 | Complete |
-| MIGR-02 | Phase 10 | Pending |
+| MIGR-02 | Phase 10 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 17 total

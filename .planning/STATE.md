@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Project-Level Planning
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-10T08:12:14.655Z"
-last_activity: 2026-03-10 -- Completed 10-01 slash command extraction and bundling
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-10T08:17:56Z"
+last_activity: 2026-03-10 -- Completed 10-02 CLI refactor with dual-directory install
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 10 of 10 (Slash Command Migration)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-03-10 -- Completed 10-01 slash command extraction and bundling
+Plan: 2 of 2 in current phase
+Status: Complete
+Last activity: 2026-03-10 -- Completed 10-02 CLI refactor with dual-directory install
 
-Progress: [█████████░] 92% (11/12 plans overall)
+Progress: [██████████] 100% (12/12 plans overall)
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 92% (11/12 plans overall)
 | Phase 09 P02 | 4min | 2 tasks | 4 files |
 | Phase 09 P03 | 4min | 2 tasks | 4 files |
 | Phase 10 P01 | 4min | 2 tasks | 18 files |
+| Phase 10 P02 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Phase 6-02: init.ts handler pattern for CLI consistency; relative paths for git.
 - [Phase 09]: Dropped features keep files with status=dropped (soft delete preserves history)
 - [Phase 10]: Character-by-character template literal unescaping for faithful .md extraction
 - [Phase 10]: Escaped backticks preserved in extracted .md files (matches runtime install-commands output)
+- [Phase 10]: Exported installSlashCommands/uninstallSlashCommands helpers for reuse by init
+- [Phase 10]: Vitest markdown raw plugin for .md import support in test environment
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-10T08:12:14.653Z
-Stopped at: Completed 10-01-PLAN.md
-Resume: Phase 9 complete. Continue with Phase 10 if applicable.
+Last session: 2026-03-10T08:17:56Z
+Stopped at: Completed 10-02-PLAN.md
+Resume: Phase 10 complete. All v2.0 plans executed.

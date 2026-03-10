@@ -12,6 +12,7 @@ import { registerInstallCommandsCommand } from './install-commands.js';
 import { registerIngestPrfaqCommand } from './ingest-prfaq.js';
 import { registerPlanRoadmapCommand } from './plan-roadmap.js';
 import { registerFeaturesCommand } from './features.js';
+import { registerSyncIssuesCommand } from './sync-issues.js';
 
 export const program = new Command();
 
@@ -34,6 +35,7 @@ registerInstallCommandsCommand(program);
 registerIngestPrfaqCommand(program);
 registerPlanRoadmapCommand(program);
 registerFeaturesCommand(program);
+registerSyncIssuesCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

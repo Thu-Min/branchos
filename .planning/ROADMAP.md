@@ -124,7 +124,7 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9 -> 10
 | 4. Context Assembly | v1.0 | 2/2 | Complete | 2026-03-08 |
 | 5. Team Coordination | v1.0 | 3/3 | Complete | 2026-03-09 |
 | 6. PR-FAQ Ingestion | v2.0 | 2/2 | Complete | 2026-03-09 |
-| 7. Roadmap and Feature Registry | v2.0 | 0/3 | Not started | - |
+| 7. Roadmap and Feature Registry | v2.0 | 1/3 | In progress | - |
 | 8. Feature-Aware Workstreams | v2.0 | 0/2 | Not started | - |
 | 9. GitHub Issues Sync and Roadmap Refresh | v2.0 | 0/3 | Not started | - |
 | 10. Slash Command Migration | v2.0 | 0/2 | Not started | - |

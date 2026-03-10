@@ -16,15 +16,15 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 ### Roadmap Generation
 
 - [ ] **ROAD-01**: User can generate ROADMAP.md from PR-FAQ via `/branchos:plan-roadmap`
-- [ ] **ROAD-02**: Generated roadmap contains milestones with ordered features and dependencies
-- [ ] **ROAD-03**: System generates individual feature files with acceptance criteria and branch names
+- [x] **ROAD-02**: Generated roadmap contains milestones with ordered features and dependencies
+- [x] **ROAD-03**: System generates individual feature files with acceptance criteria and branch names
 - [ ] **ROAD-04**: User can refresh roadmap when PR-FAQ changes via `/branchos:refresh-roadmap`
 - [ ] **ROAD-05**: Roadmap refresh preserves manual edits to feature files where possible
 
 ### Feature Registry
 
-- [ ] **FEAT-01**: Feature files use YAML frontmatter (id, title, status, milestone, branch, issue) with markdown body
-- [ ] **FEAT-02**: Features follow status lifecycle: unassigned → assigned → in-progress → complete
+- [x] **FEAT-01**: Feature files use YAML frontmatter (id, title, status, milestone, branch, issue) with markdown body
+- [x] **FEAT-02**: Features follow status lifecycle: unassigned → assigned → in-progress → complete
 - [ ] **FEAT-03**: User can list all features with status, milestone, and branch via `/branchos:features`
 
 ### GitHub Issues Sync
@@ -81,12 +81,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRFAQ-02 | Phase 6 | Complete |
 | PRFAQ-03 | Phase 6 | Complete |
 | ROAD-01 | Phase 7 | Pending |
-| ROAD-02 | Phase 7 | Pending |
-| ROAD-03 | Phase 7 | Pending |
+| ROAD-02 | Phase 7 | Complete |
+| ROAD-03 | Phase 7 | Complete |
 | ROAD-04 | Phase 9 | Pending |
 | ROAD-05 | Phase 9 | Pending |
-| FEAT-01 | Phase 7 | Pending |
-| FEAT-02 | Phase 7 | Pending |
+| FEAT-01 | Phase 7 | Complete |
+| FEAT-02 | Phase 7 | Complete |
 | FEAT-03 | Phase 7 | Pending |
 | GHIS-01 | Phase 9 | Pending |
 | GHIS-02 | Phase 9 | Pending |

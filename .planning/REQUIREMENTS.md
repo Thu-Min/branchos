@@ -34,7 +34,7 @@ Requirements for project-level planning layer. Each maps to roadmap phases.
 
 ### Workstream Enhancement
 
-- [ ] **WORK-01**: User can create workstream with `--feature <id>` to pre-load feature context and branch name
+- [x] **WORK-01**: User can create workstream with `--feature <id>` to pre-load feature context and branch name
 - [ ] **WORK-02**: Context assembly includes feature description and acceptance criteria for linked workstreams
 
 ### Slash Command Migration
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FEAT-03 | Phase 7 | Complete |
 | GHIS-01 | Phase 9 | Pending |
 | GHIS-02 | Phase 9 | Pending |
-| WORK-01 | Phase 8 | Pending |
+| WORK-01 | Phase 8 | Complete |
 | WORK-02 | Phase 8 | Pending |
 | MIGR-01 | Phase 10 | Pending |
 | MIGR-02 | Phase 10 | Pending |

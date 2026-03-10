@@ -89,12 +89,12 @@ Plans:
   2. Re-running sync updates existing issues (idempotent) rather than creating duplicates, with issue numbers stored in feature frontmatter
   3. User can run `/branchos:refresh-roadmap` after modifying the PR-FAQ and see proposed roadmap changes
   4. Roadmap refresh preserves manual edits to feature files (does not blindly overwrite human prose)
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
-- [ ] 09-03: TBD
+- [ ] 09-01-PLAN.md -- Foundation modules: types extension, gh CLI wrapper, similarity matching
+- [ ] 09-02-PLAN.md -- sync-issues handler, CLI registration, slash command
+- [ ] 09-03-PLAN.md -- refresh-roadmap handler, CLI registration, slash command
 
 ### Phase 10: Slash Command Migration
 **Goal**: All BranchOS workflow commands are available as `/branchos:*` slash commands, with the CLI reduced to init and install-commands only

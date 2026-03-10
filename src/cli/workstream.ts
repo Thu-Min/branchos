@@ -12,6 +12,7 @@ export function registerWorkstreamCommands(program: Command): void {
     .command('create')
     .description('Create a new workstream from current branch')
     .option('--name <name>', 'Override auto-derived workstream ID')
+    .option('--feature <id>', 'Link to a feature by ID (e.g., F-001)')
     .option('--json', 'Output in JSON format', false)
     .action(async (opts) => {
       const jsonMode = opts.json as boolean;
@@ -28,6 +29,7 @@ export function registerWorkstreamCommands(program: Command): void {
         const result = await createWorkstream({
           repoRoot,
           nameOverride: opts.name as string | undefined,
+          featureId: opts.feature as string | undefined,
         });
 
         if (jsonMode) {
@@ -37,14 +39,22 @@ export function registerWorkstreamCommands(program: Command): void {
               branch: result.branch,
               path: result.path,
               created: result.created,
+              ...(result.featureId ? { featureId: result.featureId } : {}),
             },
             { json: true },
           );
         } else {
-          success(
-            `Workstream '${result.workstreamId}' created from branch '${result.branch}'`,
-            { json: false },
-          );
+          if (result.featureId) {
+            success(
+              `Workstream '${result.workstreamId}' created for feature '${result.featureId}' on branch '${result.branch}'`,
+              { json: false },
+            );
+          } else {
+            success(
+              `Workstream '${result.workstreamId}' created from branch '${result.branch}'`,
+              { json: false },
+            );
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

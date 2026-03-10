@@ -1,7 +1,9 @@
 import { join } from 'path';
 import { GitOps } from '../git/index.js';
 import { readMeta, writeMeta } from '../state/meta.js';
-import { BRANCHOS_DIR, WORKSTREAMS_DIR, PROTECTED_BRANCHES } from '../constants.js';
+import { readAllFeatures, writeFeatureFile } from '../roadmap/feature-file.js';
+import { promptYesNo } from './prompt.js';
+import { BRANCHOS_DIR, SHARED_DIR, WORKSTREAMS_DIR, PROTECTED_BRANCHES } from '../constants.js';
 import { success, warning } from '../output/index.js';
 
 export interface ArchiveOptions {
@@ -55,8 +57,29 @@ export async function archiveHandler(options: ArchiveOptions): Promise<void> {
   meta.updatedAt = new Date().toISOString();
   await writeMeta(metaPath, meta);
 
+  // Collect files for atomic commit
+  const commitFiles: string[] = [metaPath];
+
+  // Feature completion prompt
+  if (meta.featureId) {
+    const featuresDir = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, 'features');
+    const features = await readAllFeatures(featuresDir);
+    const feature = features.find((f) => f.id === meta.featureId);
+    if (feature) {
+      const confirmed = await promptYesNo(
+        `Mark feature ${meta.featureId} as complete? (y/n) `,
+      );
+      if (confirmed) {
+        const updatedFeature = { ...feature, status: 'complete' as const };
+        await writeFeatureFile(featuresDir, updatedFeature);
+        const featureRelPath = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, 'features', feature.filename);
+        commitFiles.push(featureRelPath);
+      }
+    }
+  }
+
   await git.addAndCommit(
-    [metaPath],
+    commitFiles,
     `chore: archive workstream ${options.workstreamId}`,
   );
 

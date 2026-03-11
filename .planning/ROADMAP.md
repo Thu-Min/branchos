@@ -80,11 +80,11 @@ Plans:
   2. `/branchos:plan-roadmap` automatically includes relevant research summaries in its context packet
   3. Context assembly uses research summaries (not full artifacts) to stay within context window budget
   4. All existing commands work unchanged when no research artifacts exist (backward compatible)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: TBD
-- [ ] 13-02: TBD
+- [ ] 13-01-PLAN.md — ResearchSummaries field in AssemblyInput with TDD unit tests for discuss/plan inclusion
+- [ ] 13-02-PLAN.md — Wire research gathering into contextHandler and update slash command documentation
 
 ### Phase 14: Discuss Project Command
 **Goal**: Developers can create a structured PR-FAQ through an interactive guided conversation

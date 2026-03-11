@@ -11,9 +11,9 @@ Requirements for v2.1 Interactive Research milestone. Each maps to roadmap phase
 
 - [ ] **RES-01**: `/branchos:discuss-phase` includes domain research grounded in codebase context
 - [ ] **RES-02**: `/branchos:plan-roadmap` includes domain research before generating roadmap
-- [ ] **RES-03**: Research findings persisted as structured markdown with YAML frontmatter in `.branchos/shared/research/`
+- [x] **RES-03**: Research findings persisted as structured markdown with YAML frontmatter in `.branchos/shared/research/`
 - [ ] **RES-04**: Research artifacts linkable to features via `researchRefs`
-- [ ] **RES-05**: Research artifacts include summary section for downstream consumption
+- [x] **RES-05**: Research artifacts include summary section for downstream consumption
 
 ### Context Integration
 
@@ -66,9 +66,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | RES-01 | Phase 13 | Pending |
 | RES-02 | Phase 13 | Pending |
-| RES-03 | Phase 11 | Pending |
+| RES-03 | Phase 11 | Complete |
 | RES-04 | Phase 11 | Pending |
-| RES-05 | Phase 11 | Pending |
+| RES-05 | Phase 11 | Complete |
 | CTX-01 | Phase 13 | Pending |
 | CTX-02 | Phase 13 | Pending |
 | CTX-03 | Phase 13 | Pending |

@@ -11,6 +11,7 @@ import {
   CODEBASE_DIR,
   PHASES_DIR,
   DECISIONS_FILE,
+  RESEARCH_DIR,
 } from '../../src/constants.js';
 
 function initGitRepo(dir: string): void {
@@ -244,6 +245,131 @@ describe('contextHandler', () => {
 
     expect(result).not.toBeNull();
     expect(result!.raw).toContain('Used TypeScript for type safety');
+  });
+
+  it('includes research summaries in context packet when complete research artifacts exist', async () => {
+    initGitRepo(tempDir);
+    await setupWorkstream(tempDir, 'test-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    // Create a complete research artifact
+    const researchDir = join(tempDir, BRANCHOS_DIR, SHARED_DIR, RESEARCH_DIR);
+    await mkdir(researchDir, { recursive: true });
+    await writeFile(
+      join(researchDir, 'R-001-auth-patterns.md'),
+      [
+        '---',
+        'id: R-001',
+        'topic: Auth Patterns',
+        'status: complete',
+        'date: 2026-03-01',
+        'features: []',
+        '---',
+        '',
+        '## Summary',
+        '',
+        'JWT with refresh rotation is the recommended approach.',
+        '',
+        '## Details',
+        '',
+        'More details here.',
+      ].join('\n'),
+    );
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler('discuss', { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    expect(result!.raw).toContain('Research');
+    expect(result!.raw).toContain('JWT with refresh rotation');
+  });
+
+  it('produces no Research section when no research directory exists', async () => {
+    initGitRepo(tempDir);
+    await setupWorkstream(tempDir, 'test-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    // No research dir created
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler('discuss', { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    // Research section should not appear (null-skip pattern)
+    expect(result!.raw).not.toContain('## Research');
+  });
+
+  it('filters out draft research artifacts from context packet', async () => {
+    initGitRepo(tempDir);
+    await setupWorkstream(tempDir, 'test-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    // Create a draft research artifact (should be excluded)
+    const researchDir = join(tempDir, BRANCHOS_DIR, SHARED_DIR, RESEARCH_DIR);
+    await mkdir(researchDir, { recursive: true });
+    await writeFile(
+      join(researchDir, 'R-001-wip-research.md'),
+      [
+        '---',
+        'id: R-001',
+        'topic: WIP Research',
+        'status: draft',
+        'date: 2026-03-01',
+        'features: []',
+        '---',
+        '',
+        '## Summary',
+        '',
+        'Draft findings not ready for use.',
+      ].join('\n'),
+    );
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler('discuss', { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    // Draft artifacts should not produce a Research section
+    expect(result!.raw).not.toContain('## Research');
+    expect(result!.raw).not.toContain('Draft findings');
   });
 
   it('outputs raw markdown to stdout when --json is not set', async () => {

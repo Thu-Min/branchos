@@ -6,6 +6,7 @@ import {
 } from '../roadmap/frontmatter.js';
 import { slugify } from '../roadmap/slug.js';
 import type { ResearchFrontmatter, ResearchArtifact } from './types.js';
+import { rebuildIndex } from './research-index.js';
 
 const RESEARCH_FIELD_ORDER: (keyof ResearchFrontmatter)[] = [
   'id',
@@ -92,6 +93,7 @@ export async function writeResearchFile(
   const content = `${frontmatter}\n\n${artifact.body}\n`;
   const filepath = join(dir, artifact.filename);
   await writeFile(filepath, content);
+  await rebuildIndex(dir);
   return filepath;
 }
 

@@ -1,6 +1,7 @@
 import mapCodebase from '../../commands/branchos:map-codebase.md';
 import context from '../../commands/branchos:context.md';
 import discussPhase from '../../commands/branchos:discuss-phase.md';
+import discussProject from '../../commands/branchos:discuss-project.md';
 import planPhase from '../../commands/branchos:plan-phase.md';
 import executePhase from '../../commands/branchos:execute-phase.md';
 import ingestPrfaq from '../../commands/branchos:ingest-prfaq.md';
@@ -18,6 +19,7 @@ export const COMMANDS: Record<string, string> = {
   'branchos:map-codebase.md': mapCodebase,
   'branchos:context.md': context,
   'branchos:discuss-phase.md': discussPhase,
+  'branchos:discuss-project.md': discussProject,
   'branchos:plan-phase.md': planPhase,
   'branchos:execute-phase.md': executePhase,
   'branchos:ingest-prfaq.md': ingestPrfaq,

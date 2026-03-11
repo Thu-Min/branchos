@@ -144,11 +144,11 @@ describe('branchos init', () => {
 
       const commandsDir = join(tempHome, '.claude', 'commands');
       const files = await readdir(commandsDir).catch(() => []);
-      expect(files.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(15);
+      expect(files.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(16);
 
       const skillsDir = join(tempHome, '.claude', 'skills');
       const skillFiles = await readdir(skillsDir).catch(() => []);
-      expect(skillFiles.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(15);
+      expect(skillFiles.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(16);
     });
 
     it('calls installSlashCommands on re-init (already initialized)', async () => {
@@ -168,7 +168,7 @@ describe('branchos init', () => {
       await initHandler({ json: false, cwd: tempDir });
 
       const files = await readdir(commandsDir).catch(() => []);
-      expect(files.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(15);
+      expect(files.filter((f: string) => f.startsWith('branchos:'))).toHaveLength(16);
     });
 
     it('still returns correct InitResult structure', async () => {

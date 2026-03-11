@@ -24,7 +24,10 @@ import {
   PHASES_DIR,
   DECISIONS_FILE,
   PROTECTED_BRANCHES,
+  RESEARCH_DIR,
 } from '../constants.js';
+import { readAllResearch } from '../research/research-file.js';
+import { extractSummary } from '../research/extract-summary.js';
 
 export interface ContextOptions {
   json?: boolean;
@@ -68,21 +71,59 @@ export async function contextHandler(
     return null;
   }
 
-  // Load feature context if workstream is linked to a feature
-  let featureContext: string | null = null;
+  // Read workstream meta once for feature and research filtering
+  let workstreamMeta: Awaited<ReturnType<typeof readMeta>> | null = null;
   try {
     const metaPath = join(workstream.path, 'meta.json');
-    const meta = await readMeta(metaPath);
-    if (meta.featureId) {
+    workstreamMeta = await readMeta(metaPath);
+  } catch {
+    // meta.json missing/unreadable - proceed without meta-dependent context
+  }
+
+  // Load feature context if workstream is linked to a feature
+  let featureContext: string | null = null;
+  if (workstreamMeta?.featureId) {
+    try {
       const featuresDir = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, 'features');
       const features = await readAllFeatures(featuresDir);
-      const feature = features.find((f) => f.id === meta.featureId);
+      const feature = features.find((f) => f.id === workstreamMeta!.featureId);
       if (feature) {
         featureContext = formatFeatureContext(feature);
       }
+    } catch {
+      // Feature file missing/unreadable - proceed without feature context
+    }
+  }
+
+  // Load research summaries from shared research directory
+  let researchSummaries: string | null = null;
+  try {
+    const researchDir = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, RESEARCH_DIR);
+    const artifacts = await readAllResearch(researchDir);
+    if (artifacts.length > 0) {
+      // Only include complete artifacts
+      const complete = artifacts.filter((a) => a.status === 'complete');
+      // If workstream linked to feature, filter by feature relevance
+      let relevant = complete;
+      if (workstreamMeta?.featureId) {
+        relevant = complete.filter(
+          (a) => a.features.length === 0 || a.features.includes(workstreamMeta!.featureId!),
+        );
+      }
+
+      const summaryParts: string[] = [];
+      for (const artifact of relevant) {
+        const summary = extractSummary(artifact.body);
+        if (summary) {
+          summaryParts.push(`### ${artifact.topic} (${artifact.id})\n\n${summary}`);
+        }
+      }
+      if (summaryParts.length > 0) {
+        researchSummaries = summaryParts.join('\n\n');
+      }
     }
   } catch {
-    // Feature file missing/unreadable - proceed without feature context
+    // Research dir missing or unreadable - proceed without research context
   }
 
   const statePath = join(workstream.path, 'state.json');
@@ -185,7 +226,7 @@ export async function contextHandler(
     branchDiffNameStatus,
     branchDiffStat,
     featureContext,
-    researchSummaries: null,
+    researchSummaries,
   };
 
   const packet = assembleContext(input);

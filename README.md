@@ -124,22 +124,41 @@ branchos detect-conflicts
 
 ## Claude Code Slash Commands
 
+### Project Planning Flow
+
 | Command | Description |
 |---------|-------------|
-| `/branchos:map-codebase` | Generate or refresh the shared codebase map |
-| `/branchos:context` | Load workstream context for the current phase |
-| `/branchos:create-workstream` | Create a workstream for the current branch |
-| `/branchos:list-workstreams` | List all workstreams and their status |
-| `/branchos:discuss-phase` | Create discussion context for a phase |
-| `/branchos:plan-phase` | Create implementation plan for a phase |
-| `/branchos:execute-phase` | Track execution progress for a phase |
-| `/branchos:status` | Show dashboard with workstream status, drift, and conflicts |
-| `/branchos:archive` | Archive a completed workstream |
-| `/branchos:ingest-prfaq` | Ingest a PR-FAQ document for project planning |
-| `/branchos:plan-roadmap` | Generate roadmap and features from ingested PR-FAQ |
-| `/branchos:refresh-roadmap` | Refresh roadmap when the PR-FAQ has been updated |
-| `/branchos:features` | List features or view feature details |
-| `/branchos:sync-issues` | Push feature definitions to GitHub Issues |
+| `/branchos:discuss-project` | Create a PR-FAQ document through guided interactive discussion |
+| `/branchos:ingest-prfaq` | Ingest PR-FAQ document for project planning |
+| `/branchos:plan-roadmap` | Generate roadmap and feature files from ingested PR-FAQ |
+| `/branchos:refresh-roadmap` | Refresh roadmap and features when the PR-FAQ has been updated |
+| `/branchos:features` | List features or view feature details from the feature registry |
+| `/branchos:sync-issues` | Push feature definitions to GitHub Issues for team coordination |
+
+### Workstream Management
+
+| Command | Description |
+|---------|-------------|
+| `/branchos:create-workstream` | Create a new BranchOS workstream |
+| `/branchos:list-workstreams` | List all workstreams with status |
+| `/branchos:archive` | Archive a completed workstream after branch merge |
+
+### Phase Workflow
+
+| Command | Description |
+|---------|-------------|
+| `/branchos:context` | Load workstream context for current phase |
+| `/branchos:discuss-phase` | Create or update discussion context for current workstream phase |
+| `/branchos:plan-phase` | Create implementation plan for current workstream phase |
+| `/branchos:execute-phase` | Update execution state for current workstream phase |
+
+### Codebase & Status
+
+| Command | Description |
+|---------|-------------|
+| `/branchos:map-codebase` | Generate or refresh the codebase map in `.branchos/shared/codebase/` |
+| `/branchos:status` | Show BranchOS dashboard with workstream status, map staleness, drift, and conflicts |
+| `/branchos:research` | Start an interactive research session or save findings |
 
 ## Documentation
 

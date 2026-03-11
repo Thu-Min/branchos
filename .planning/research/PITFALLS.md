@@ -1,156 +1,159 @@
 # Pitfalls Research
 
-**Domain:** CLI developer workflow tool -- adding project-level planning layer (PR-FAQ ingestion, roadmap generation, feature registry, GitHub Issues sync, slash-command migration) to existing v1 system
-**Project:** BranchOS v2.0
-**Researched:** 2026-03-09
-**Confidence:** HIGH (codebase analysis, API documentation, community patterns, prior v1 pitfalls research)
+**Domain:** Adding interactive research slash commands to an existing CLI-first AI dev tool with slash command architecture
+**Project:** BranchOS v2.1 Interactive Research
+**Researched:** 2026-03-11
+**Confidence:** HIGH (direct codebase analysis, slash command architecture constraints, prior v2.0 pitfalls experience)
 
 ## Critical Pitfalls
 
-### Pitfall 1: GitHub Issues sync creates duplicates on re-run
+### Pitfall 1: Context Window Bloat From Accumulated Research Artifacts
 
 **What goes wrong:**
-`sync-issues` creates duplicate GitHub Issues every time it runs because there is no reliable deduplication key. Title-based matching is fragile (titles get edited on GitHub), and label-based matching misses renamed or relabeled issues. Teams end up with 3 copies of "Auth System" cluttering their issue tracker and lose trust in the tool.
+Research is inherently open-ended. Each research iteration produces markdown artifacts (findings, comparisons, summaries). When these accumulate in the context packet, the assembled context grows unbounded. The existing `assembleContext` function already loads architecture, conventions, modules, discuss/plan/execute artifacts, decisions, feature context, and diff summaries (the `AssemblyInput` interface has 14 fields). Adding research artifacts on top pushes the context packet beyond what fits usefully in Claude Code's context window. The LLM starts dropping or ignoring earlier research, or the slash command output becomes so large that Claude Code truncates it.
 
 **Why it happens:**
-GitHub's REST API has no built-in idempotency for issue creation. `POST /repos/{owner}/{repo}/issues` always creates a new issue. Developers assume "search by title first" is sufficient, but titles are edited on GitHub's side, creating drift between the local feature registry and remote issues.
+BranchOS's context model was designed for structured, bounded artifacts (a discuss.md, a plan.md, an execute.md -- each produced once per phase). Research is different: it can produce multiple files per topic, accumulate across sessions, and reference external sources. Developers naturally want "all my research available" when they move to planning, but assembling everything creates an unmanageable context payload.
 
 **How to avoid:**
-Store the GitHub Issue number back into the local feature file after creation. The feature file (e.g., `.branchos/shared/features/auth-system.md`) becomes the source of truth for the link. On subsequent `sync-issues` runs:
-1. If the feature file has an `issue: #N` field in frontmatter, update that issue (PATCH), do not create.
-2. If no issue number stored, search by a tool-controlled label like `branchos:auth-system` (not title).
-3. Only create if both checks fail.
-4. Always write the issue number back to the feature file and git commit immediately after creation.
+- Research artifacts must have a **summary layer**. Store raw research in detail files but only inject a condensed `research-summary.md` into the context packet. Maximum 200-300 lines in the summary.
+- Implement a research-to-context pipeline: raw findings -> distilled summary -> context packet inclusion. The summary is what gets assembled by `assembleContext`, not the raw research.
+- Set a hard size budget for research context (e.g., 4000 tokens worth). Truncate with a "See full research in .branchos/..." pointer.
+- Never auto-include all research files in the context packet. Include only the summary for the current feature/workstream.
 
 **Warning signs:**
-- Feature files have no `issue` field after sync
-- Tests only cover the "create new" code path, not "update existing"
-- No integration test that runs `sync-issues` twice and asserts zero new issues
+- Context packet output exceeds 500 lines total
+- Users run `/branchos:context` and get a wall of text they scroll past
+- Research from unrelated topics leaks into workstream context
+- Claude Code responses start ignoring or contradicting earlier research findings
 
 **Phase to address:**
-GitHub Issues sync phase. The `issue` field must be designed into the feature file schema from the start (feature registry phase), even if sync is built later.
+Phase 1 (research storage design). The storage schema must separate raw research from summarized research from the start. Retrofitting a summary layer onto flat research files is painful.
 
 ---
 
-### Pitfall 2: PR-FAQ parsing is brittle -- assumes exact markdown structure
+### Pitfall 2: Over-Engineering the Research Workflow Into a Multi-Step State Machine
 
 **What goes wrong:**
-The PR-FAQ parser breaks when the Product Owner uses slightly different heading levels, adds extra sections, uses bullet lists instead of paragraphs, or includes unexpected markdown features (tables, callouts, HTML). The tool either crashes or silently drops sections, producing an incomplete roadmap.
+The existing workstream model has a clean three-step lifecycle: discuss -> plan -> execute, tracked via `PhaseStep` with status fields. It is tempting to model research as its own multi-step state machine (e.g., "question -> investigate -> synthesize -> validate -> finalize") with status tracking, transitions, and guards. This creates a rigid workflow that fights against research's inherently iterative, non-linear nature. Developers abandon the structured flow and just write files manually, making the state machine dead code.
 
 **Why it happens:**
-Developers build parsers that match exact heading text (`## Press Release`, `## Customer FAQ`) instead of parsing structure flexibly. Markdown is freeform -- there is no enforced schema. The PR-FAQ is a "living document" that evolves, and each edit risks breaking the parser.
+BranchOS has a successful pattern (`PhaseStep` with `'not-started' | 'in-progress' | 'complete'` tracking) and the natural instinct is to replicate it. But research does not follow a linear pipeline. A developer might research, discover a new question, pivot, research again, merge findings, and backtrack. Forcing this into a state machine creates friction without value.
 
 **How to avoid:**
-Do NOT parse PR-FAQ with regex or rigid heading matchers. Instead:
-1. Use YAML frontmatter for machine-readable metadata (feature list, milestone names, priorities). The prose sections are for AI consumption during roadmap generation, not structured extraction.
-2. When generating the roadmap, pass the entire PR-FAQ content to Claude as context rather than trying to extract structured data programmatically.
-3. If you must parse sections, use a proper markdown AST parser (remark/unified ecosystem) and match on heading hierarchy, not exact text.
-4. Validate gracefully: warn about unrecognized sections rather than failing.
+- Research should be **artifact-driven, not state-driven**. Track what files exist and when they were last updated, not what "step" the researcher is on.
+- Use a simple status model: `active` / `complete` / `stale`. No intermediate steps. No transition guards.
+- The slash command should be re-entrant: running `/branchos:research` again picks up where you left off based on existing artifacts, not based on a state field.
+- Let the content of research files (presence of summary, presence of findings) imply progress, not a deeply nested status object in state.json.
 
 **Warning signs:**
-- Parser uses regex like `/^## Press Release$/`
-- No test cases with "messy" PR-FAQ input (extra headings, typos, reordered sections)
-- Parser fails on the first real PO-written document
+- state.json gets a deeply nested research status object with multiple sub-steps
+- You are writing transition validation code ("can't synthesize before investigating")
+- The research command has more than 2-3 "modes" or sub-steps
+- Users complain they cannot go back to add more research after "completing" a step
 
 **Phase to address:**
-PR-FAQ ingestion (first phase). Get the parsing approach right before anything depends on it.
+Phase 1 (core design). This is an architectural decision that pervades everything. Get it wrong and every subsequent phase fights it.
 
 ---
 
-### Pitfall 3: Roadmap refresh destroys manual edits
+### Pitfall 3: Research Scope Creep -- Trying to Be a General-Purpose Research Tool
 
 **What goes wrong:**
-Team reviews roadmap, manually adjusts milestones, reorders features, adds notes. Then PR-FAQ changes and someone runs `refresh-roadmap`. The regenerated roadmap overwrites all manual edits because it was generated fresh from the PR-FAQ.
+The feature starts as "research before planning" but grows to include: web search integration, automated source fetching, citation management, knowledge base building, cross-project research sharing, research templates for different domains, and AI-powered synthesis. Each addition is individually reasonable but collectively they transform BranchOS from a workflow tool into a research platform. Development stalls, the feature never ships, and the simple use case (developer asks questions, gets answers, records findings for planning) gets buried under complexity.
 
 **Why it happens:**
-The vision says "explicit refresh-roadmap command" but does not specify merge semantics. The naive implementation regenerates from scratch. Since the roadmap is AI-generated markdown, there is no structured diff mechanism -- it is a full replacement.
+Research is an unbounded problem domain. Every person who touches the feature sees a different "essential" capability. The lack of a clear scope boundary means each review cycle adds requirements. Also, because the research is conversational (user talks to Claude), it feels natural to keep expanding what the conversation can do.
 
 **How to avoid:**
-1. Separate machine-generated content from human edits. Use YAML/JSON for machine-managed parts (milestone order, feature assignments, dependencies) and markdown body for human prose. Refresh only regenerates the structured parts.
-2. Alternatively, on refresh, show a diff of what changed and require confirmation before writing. `refresh-roadmap` should be a review workflow, not a blind overwrite.
-3. Store a content hash of the PR-FAQ that was used to generate the current roadmap. On refresh, show what changed in the PR-FAQ since last generation.
-4. Consider `ROADMAP.md` as human-owned after initial generation. Refresh produces a `ROADMAP.proposed.md` for review, not a direct overwrite.
+- Define research as: **structured conversation that produces planning-ready artifacts**. Nothing more.
+- The slash command's job is to (1) load existing context and research artifacts, (2) frame the research question, (3) let the developer converse with Claude, and (4) record the output. BranchOS does not DO the research -- Claude does. BranchOS captures and organizes the results.
+- Hard "out of scope" list: no custom web search integration (Claude Code already has WebSearch/WebFetch tools), no citation management, no cross-project research, no domain-specific research templates.
+- Ship the minimal version first: a command that creates/loads a research session and writes findings to a structured file. Iterate from real usage, not imagination.
 
 **Warning signs:**
-- `plan-roadmap` and `refresh-roadmap` use the same code path with no merge logic
-- No test for "refresh after manual edit preserves edits"
-- ROADMAP.md has no metadata about when/how it was generated
+- The research slash command markdown file exceeds 150 lines
+- You are building custom tool integrations inside the slash command
+- Feature discussions keep saying "we could also..."
+- The research file schema has more than 5-6 fields
 
 **Phase to address:**
-Roadmap generation phase. The refresh strategy must be designed alongside initial generation, not bolted on later.
+Phase 0 (requirements/scoping). Write explicit scope boundaries before any code. This is a project constraint, not a phase deliverable.
 
 ---
 
-### Pitfall 4: Slash-command migration breaks existing users with no escape hatch
+### Pitfall 4: Breaking the Existing discuss -> plan -> execute Flow
 
 **What goes wrong:**
-Migrating from CLI commands to slash-command-only architecture means existing `branchos workstream create` invocations stop working. Users who have muscle memory, scripts, or documentation referencing CLI commands are stranded. Worse, if the slash commands require Claude Code but users sometimes work without it, they lose all functionality.
+Research gets wedged into the existing workflow in a way that creates confusion about ordering and purpose. Does research happen before discuss? During discuss? Is it a separate pre-phase? Developers do not know when to use `/branchos:research` vs `/branchos:discuss-phase`. The two commands overlap in purpose (both involve "talking about what to build"), creating a redundant workflow where developers skip one or use them inconsistently.
 
 **Why it happens:**
-The vision says "CLI reduced to bootstrapper (init, install slash commands)" which implies removing working CLI commands. The assumption is everyone uses Claude Code all the time, but teams have mixed workflows. Additionally, Claude Code merged slash commands into "skills" in v2.1.3 (January 2026), so the installation target directory and mechanism may need updating.
+Research and discussion are conceptually adjacent. Both involve exploring a problem space. The existing discuss-phase already produces goals, requirements, assumptions, unknowns, and decisions. Research produces findings, recommendations, and constraints. Without a clear boundary, they blur together.
 
 **How to avoid:**
-1. Keep CLI commands working throughout v2. Deprecate with warnings, do not remove.
-2. Slash commands should shell out to the CLI (as they already do for `context`), not replace the CLI logic. The CLI is the engine; slash commands are the UX layer.
-3. Add a deprecation notice: `branchos workstream create` prints "Tip: Use /branchos:workstream-create in Claude Code" but still works.
-4. Account for the Claude Code slash-commands-to-skills migration. Install to `.claude/commands/` (still backwards compatible) but also support `.claude/skills/` as the forward path. Both directories work in Claude Code 2.1.3+.
-5. New v2 commands should ship with both CLI and slash command interfaces from day one.
+- **Research is project-level or feature-level, not workstream-phase-level.** This is the key architectural distinction. Research lives in `.branchos/shared/research/` (or per-feature), not in workstream phase directories. It happens BEFORE a workstream exists, or early in the workstream to inform discussion.
+- Discuss-phase consumes research output. Research produces findings; discuss-phase makes decisions informed by those findings. Clear pipeline: research -> discuss (informed by research) -> plan -> execute.
+- Make the relationship explicit in the slash command: `/branchos:discuss-phase` should check for and reference existing research artifacts, surfacing them as input context.
+- Do NOT add a `research: PhaseStep` field to the `Phase` interface in state.ts. Research is not a phase step.
 
 **Warning signs:**
-- PRs that delete CLI command registrations from Commander
-- No `--help` output mentions slash command equivalents
-- `install-commands` only targets `~/.claude/commands/`, not project-level `.claude/commands/` or `.claude/skills/`
+- Someone proposes adding `research: PhaseStep` to the Phase interface
+- Users ask "should I research or discuss first?"
+- Research artifacts end up in `.branchos/workstreams/<id>/phases/<n>/research.md`
+- The discuss slash command and research slash command produce overlapping output formats
 
 **Phase to address:**
-Should be a constraint across ALL phases, not a single migration phase. Each new feature should have both CLI and slash command interfaces.
+Phase 1 (storage design) and Phase 2 (slash command design). The storage location and the command's framing both need to reinforce that research is a separate concern from workstream phases.
 
 ---
 
-### Pitfall 5: Feature registry becomes stale -- no single source of truth
+### Pitfall 5: Conversational State Persistence Across Slash Command Invocations
 
 **What goes wrong:**
-Feature status lives in three places: the feature file (`.branchos/shared/features/auth-system.md`), the GitHub Issue (open/closed, labels), and the workstream state (`state.json`). They drift apart. The feature file says "in-progress" but the GitHub Issue is closed. Or the workstream is archived but the feature still says "assigned."
+Slash commands in Claude Code are stateless between invocations. Each time a user runs `/branchos:research`, Claude Code processes the command markdown and $ARGUMENTS fresh. The research "session" -- the back-and-forth dialogue where the developer asks questions and Claude responds -- cannot be persisted by BranchOS because BranchOS only controls what gets written to files, not Claude Code's conversation memory. Developers expect to "resume" a research conversation, but the slash command can only reload artifact files, not the conversational context that produced them.
 
 **Why it happens:**
-Distributed state without automatic reconciliation. Each system (local files, GitHub, workstreams) is updated independently. The vision says "assignment happens on GitHub" but status tracking is local. There is no event-driven sync.
+Interactive research implies multi-turn conversation. But slash commands are structured prompts that execute within the current conversation. If a developer starts a new conversation and runs `/branchos:research` again, all prior conversational context is gone. BranchOS can assemble file-based context, but it cannot control Claude Code's conversation history.
 
 **How to avoid:**
-1. Make feature files the single source of truth for BranchOS. GitHub Issues are a projection (created from features), not the authority.
-2. Status in feature files should only change through BranchOS commands, never manual edits.
-3. Do NOT try to sync status back from GitHub. It adds complexity without proportional value for a 2-5 person team. The team knows what is happening.
-4. Document explicitly: "GitHub Issue status and feature file status may diverge. Feature files reflect BranchOS workflow state. GitHub Issues reflect team discussion."
+- Design for **artifact-based continuity, not conversation continuity**. Each research invocation reads existing research files and uses them as context. The "conversation" is reconstructed from artifacts, not from chat history.
+- Structure research artifacts to be self-contained: each finding should include the question asked, the answer found, the confidence level, and the sources. This means a new Claude session can read the artifact and understand what was already explored.
+- Include a "Research Log" section in the research file that acts as a structured transcript -- not a literal chat log, but a question -> finding sequence that lets Claude pick up context.
+- Do NOT try to build conversation persistence. It is outside BranchOS's control and would require hacking Claude Code internals.
 
 **Warning signs:**
-- Feature status enum has states that mirror GitHub Issue states (e.g., "closed")
-- Code that polls GitHub Issues to update local feature files
-- Multiple commands can change feature status through different code paths
+- Developers complain that Claude "forgot" what they researched last session
+- Research artifacts are written as conclusions without the questions that led to them
+- Someone proposes storing Claude conversation IDs or message histories
+- Research output is only useful in the session it was created (not readable standalone)
 
 **Phase to address:**
-Feature registry phase. The status model must be designed before GitHub sync is built.
+Phase 2 (slash command design). The command's prompt template must explicitly instruct Claude to read existing artifacts and build on them, creating continuity through artifact quality rather than conversation memory.
 
 ---
 
-### Pitfall 6: Schema migration becomes a combinatorial nightmare
+### Pitfall 6: Research Artifact Bloat in Git History
 
 **What goes wrong:**
-v2 adds `featureId`, `issueNumber`, and `projectContext` fields to `WorkstreamMeta` and `WorkstreamState`. The existing chained migration system (v0->v1->v2) needs a v2->v3 migration. But if feature registry also needs its own schema, and PR-FAQ metadata needs a schema, you end up with 3-4 separate schema systems that all need migration logic, versioning, and testing.
+BranchOS commits all artifacts to git (a key design decision from v1). Research, being iterative, produces many revisions. A developer might update research findings 10-15 times during a session. If each update triggers an auto-commit (following the established pattern from discuss/plan/execute commands which auto-commit in Step 8), the git history fills with noisy "chore(branchos): update research" commits that obscure meaningful changes. Worse, large research files with embedded source quotes or analysis can bloat the repository.
 
 **Why it happens:**
-The current migration system in `src/state/schema.ts` is workstream-focused (`state.json` and `meta.json` only). v2 introduces new file types (feature files, roadmap metadata, PR-FAQ metadata) that each need their own structure. Developers add ad-hoc schema handling to each new file type instead of generalizing.
+The existing auto-commit pattern works for discuss/plan/execute because those produce one artifact per invocation. Research is different -- it is iterative within a single conceptual session, with the file being updated as findings accumulate. Applying the same auto-commit-on-every-write pattern creates commit spam.
 
 **How to avoid:**
-1. Use YAML frontmatter for all new markdown files (features, roadmap) with a `schemaVersion` field. The existing `migrateIfNeeded` pattern works -- extend it rather than creating parallel systems.
-2. Define all new interfaces upfront: `FeatureFile`, `RoadmapMeta`, `ProjectConfig`. Add them to a single schema registry.
-3. Keep the workstream migration chain simple: one version bump (schema v2 -> v3) that adds all v2.0 fields to existing files. Do NOT create separate version tracks per file type.
-4. New file types (features, roadmap) start at schema v1 with their own migration chains but share the same `migrateIfNeeded` infrastructure.
+- Auto-commit research artifacts only at **session boundaries**, not on every write. The research slash command should write files during the session but only commit when the user explicitly signals "done for now" or when the research command reaches its final step.
+- Commit on explicit save points: "save research progress" as a user action within the command, not automatic on every file update.
+- Keep research files concise. Structured markdown (tables, bullet points) instead of prose. Set a soft guideline of 200 lines max per research file.
+- Use a `.branchos/shared/research/` directory with per-topic files rather than one monolithic research dump.
 
 **Warning signs:**
-- Multiple `migrateIfNeeded` functions with different version tracks and no shared code
-- Feature files have no `schemaVersion` field
-- Tests only cover fresh creation, not migration from v1 workstream state
+- `git log --oneline` shows 10+ consecutive "update research" commits
+- `.branchos/` directory size grows noticeably after research sessions
+- Team members complain about noisy git history from research commits
+- Research files exceed 500 lines
 
 **Phase to address:**
-Must be decided in the first phase (PR-FAQ/foundation) and enforced in every subsequent phase.
+Phase 2 (slash command implementation). The commit strategy should be designed into the command flow from the start.
 
 ---
 
@@ -158,111 +161,98 @@ Must be decided in the first phase (PR-FAQ/foundation) and enforced in every sub
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Embedding slash command content as string literals in `install-commands.ts` | Single file, no asset loading | Adding/editing commands requires rebuilding npm package; 500+ line template literals are unreadable | Never for v2 -- move to separate .md files loaded at install time |
-| Regex-based markdown parsing for PR-FAQ | Quick to implement for known format | Breaks on unexpected input, hard to extend, no error recovery | Only for simple frontmatter extraction (YAML between `---` fences); use AST for body parsing |
-| Storing feature state in markdown prose instead of frontmatter | Human-readable at a glance | Hard to query programmatically, parsing is fragile | Never -- use YAML frontmatter for machine state, markdown body for human description |
-| Single-file roadmap (combined machine + human content) | Simpler file structure | Refresh destroys edits, no way to tell what is auto-generated vs. human-written | Only in initial MVP if `refresh-roadmap` is not yet implemented |
-| Skipping GitHub API rate limiting / retry | Faster development, less code | Fails silently when rate limited; 2-5 person team unlikely to hit limits but CI/testing might | Acceptable in MVP if you handle 403 responses with a clear error message |
-| Direct `gh` CLI subprocess calls instead of GitHub REST API | No need for auth token management, simpler code | Requires `gh` installed and authenticated; harder to test | Acceptable -- `gh` handles auth well and BranchOS is a CLI tool for developers who likely have `gh` |
+| Storing research in workstream dir instead of shared | Simpler path resolution, no new storage location needed | Research locked to one workstream, cannot share across features or reuse when workstream is archived | Never -- research should be reusable across workstreams |
+| No size limits on research artifacts | Users write freely without constraints | Context assembly becomes unwieldy, context packet exceeds useful size | MVP only -- add limits before second iteration |
+| Hardcoding research file structure in slash command markdown only | Ships faster, no TypeScript code changes needed | Cannot validate structure programmatically, cannot extract summaries for context assembly, cannot detect staleness | First iteration only, must add TypeScript support for context integration |
+| Skipping research-to-context integration | Research command works standalone without touching assembleContext | Discuss/plan phases do not benefit from research, defeating the entire purpose of integrated research | Never -- integration is the whole point of this milestone |
+| Single flat research file per topic | Simple file management, easy to understand | Cannot track multiple research sessions, no separation of raw findings from summary | Acceptable for v2.1 MVP if summary section is embedded in the file |
+| No research indexing/manifest | Fewer files to manage, simpler commands | Cannot list research topics without scanning directory, cannot associate research with features | Acceptable for MVP if research count stays under 10 |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| GitHub Issues API via `gh` | Creating issues without storing the returned issue number locally | Always parse `gh issue create` output for the issue URL/number, write back to feature file, git commit |
-| GitHub Issues API via `gh` | Using title match to find existing issues | Search by tool-controlled label (`branchos:<feature-id>`); titles are user-editable and unreliable |
-| GitHub Issues API via `gh` | Assuming `gh` CLI is always available and authenticated | Check for `gh` binary and `gh auth status` before any sync operation; provide clear error with install instructions |
-| GitHub Labels | Creating labels without checking existence | Use `gh label create` which does not error if label exists (with `2>/dev/null`), or check first |
-| Claude Code commands/skills | Installing only to `~/.claude/commands/` (global) | Project-level `.claude/commands/` is better for team sharing and version control. Support both. |
-| Claude Code commands/skills | Not accounting for the skills merge in v2.1.3 | Both `commands/` and `skills/` directories work; commands files are backwards compatible |
-| Git auto-commits during sync | Auto-committing after each feature file update in a loop (N commits for N features) | Batch all changes, single commit at end of sync operation |
-| simple-git library | Assuming git operations complete synchronously | simple-git operations are async; avoid concurrent git operations from the same process |
-| `AssemblyInput` interface | Adding feature context as another optional string field (like `discussMd`) | The `AssemblyInput` interface already has 14 fields. Group feature context into a sub-object or create a `FeatureContext` type |
+| Context assembly (`assembleContext` in `src/context/assemble.ts`) | Adding research as another full-text section alongside architecture/conventions/modules | Add a dedicated `researchSummary` field to `AssemblyInput` with a size budget; only include the summary section, not raw findings |
+| Existing discuss-phase slash command | Not referencing research artifacts when they exist | Update `commands/branchos:discuss-phase.md` to check for and load relevant research as input context in Step 3 (Gather context) |
+| State model (`WorkstreamState` in `src/state/state.ts`) | Adding complex research state to WorkstreamState with new PhaseStep-like fields | Research state is separate -- either in shared state or as file-presence detection. Do not extend WorkstreamState or Phase with research fields |
+| Feature registry | No link between features and research topics | Research files should be nameable by feature ID (e.g., `research-F001.md`) so feature-aware context assembly can include relevant research |
+| Auto-commit pattern (Step 8 in slash commands) | Committing on every research file write, same as discuss/plan/execute | Commit at session end or on explicit user action only -- research is iterative, not one-shot |
+| Slash command `allowed-tools` | Restricting tools too tightly for research (e.g., only `Bash(npx branchos *)`) | Research needs Read, Write, Glob, Grep, Bash(git), Bash(npx branchos), and potentially WebSearch/WebFetch for Claude to actually perform research |
+| Slash command `$ARGUMENTS` | Not passing the research topic through $ARGUMENTS | Research command must use $ARGUMENTS as the topic/question, similar to how discuss-phase uses it as guidance |
+| `ensureWorkstream` gate | Requiring a workstream to exist before research can run | Research should work without a workstream -- it is project/feature-level, not workstream-level |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Reading all feature files on every command invocation | Slow startup as feature count grows | Lazy-load: only read the feature linked to the current workstream | 50+ features (unlikely for 2-5 person team, but possible) |
-| Calling `gh` CLI for each feature during `sync-issues` | Sync takes minutes; each `gh` call is a subprocess + HTTP request | Batch: `gh issue list --label branchos --json number,title,labels` fetches all at once, then diff locally | 15+ features |
-| Regenerating full roadmap on every PR-FAQ change | Slow if using AI generation; burns API tokens | Hash PR-FAQ content, only regenerate if hash changed from stored hash | Any project where refresh is run more than occasionally |
-| Assembling context with all feature files included in packet | Context packet grows beyond useful size, degrades AI quality | Include only the feature linked to current workstream, not all features | 20+ features with detailed acceptance criteria |
-| Scanning all workstream directories to find current branch match | Slow with many archived workstreams | Index active workstreams in a lightweight manifest, or filter by `status: active` in meta.json | 50+ total workstreams (including archived) |
+| Loading all research files into context packet | Slow context assembly, huge output, Claude ignores early content | Only load summary file or summary section, not all raw research | More than 3-4 research files per project |
+| Glob-scanning `.branchos/shared/research/` on every command invocation | Noticeable delay on slash command start | Read only the specific research file for the current feature, or maintain a lightweight index | More than 20 research files (unlikely near-term but possible) |
+| Large research artifacts inflating git diff in `branchos status` | Status command slows down, diff output becomes unreadable | Keep research files under 200 lines; use structured format not prose | Cumulative research across all topics exceeds 50 files |
+| Research file reads during `assembleContext` when no research exists | Unnecessary filesystem calls for projects not using research | Guard with existence check before reading; lazy-load only when research directory exists | Any project not using v2.1 research features |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Storing GitHub tokens in `.branchos/config.json` | Token committed to git, exposed to all repo collaborators | Never store tokens. Rely on `gh auth status`. The `gh` CLI handles authentication and token storage. |
-| Including GitHub Issue body/comments in context packets | Private discussion, security reports, or sensitive info leaks into AI context | Only sync issue number, title, and labels. Never pull full issue body into local files. |
-| `sync-issues` auto-creates issues in public repos without review | Internal feature names, acceptance criteria, and implementation plans become public | Always show dry-run output before creating issues; require `--confirm` flag or `--dry-run` default |
-| Feature files with acceptance criteria committed to a public repo | Internal quality criteria and edge cases visible to competitors/public | This is by design (all artifacts in git), but warn users during `init` if repo is public |
+| Research artifacts containing API keys or credentials discovered during investigation | Keys committed to git in `.branchos/shared/research/` visible to all repo collaborators | Research file template should include a "do not include secrets" reminder; slash command prompt should instruct Claude to redact sensitive values |
+| Research slash command with overly broad `allowed-tools` (e.g., `Bash(*)`) | Arbitrary command execution during research session | Scope `allowed-tools` to read-only operations plus git and branchos commands; use pattern `Bash(git *)`, `Bash(npx branchos *)` |
+| External URL content embedded verbatim in research files | Copyright issues, potential injection of malicious content, large binary payloads | Store URLs and summaries in research files, not full page content; Claude naturally summarizes but the prompt should reinforce this |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| `sync-issues` silently succeeds with no output | User does not know what was created, updated, or skipped | Print a summary table: "Created: 3, Updated: 1, Skipped (unchanged): 5, Errors: 0" |
-| `refresh-roadmap` overwrites without warning | User loses manual edits, loses trust in tool | Show diff preview, require confirmation. Or generate to `ROADMAP.proposed.md` for review. |
-| Feature-aware workstream creation fails on wrong feature ID | User types wrong ID, gets cryptic "feature not found" error | List available features with fuzzy match: "Did you mean 'auth-system'? Available: auth-system, payment-flow, dashboard-ui" |
-| `plan-roadmap` generates roadmap but user does not know what is editable | AI-generated roadmap feels opaque | Generate with clear markers: frontmatter is machine-managed, body sections are freely editable |
-| PR-FAQ ingestion gives no feedback on what was understood | User does not know if their document was parsed correctly | Print extracted structure: "Found: Press Release (245 words), 3 Customer FAQs, 2 Internal FAQs" |
-| New slash commands require memorizing names | Cognitive load increases with each new command | Add a `/branchos:help` command that lists all available commands with one-line descriptions |
-| `discuss-project` is confusing vs `discuss-phase` | Users do not know which command to use when | Clear naming: `discuss-project` is for PR-FAQ creation, `discuss-phase` is for workstream phases. Help text should clarify. |
+| Research command requires choosing a "research type" or "mode" before starting | Friction at the moment of curiosity; developer just wants to ask a question | Single entry point: `/branchos:research <topic>`. Infer structure from content, not upfront configuration |
+| No way to see what has been researched already | Developers re-research topics or lose track of findings | `/branchos:research` with no arguments lists existing research files with one-line summaries |
+| Research output is a wall of unstructured text | Hard to scan, hard to reference from discuss/plan phases | Enforce structured output: summary, key findings (bulleted), open questions, confidence levels |
+| Must create a workstream before researching | Research often happens BEFORE you know what workstream you need | Allow research at project/feature level without requiring a workstream -- bypass `ensureWorkstream` gate |
+| No indication when research is "enough" | Developers either over-research (perfectionism) or under-research (rushing) | Include a "completeness check" in research output: table stakes covered? architecture patterns identified? key risks surfaced? |
+| Research and discuss-phase feel redundant | Developer confusion about which command to use, workflow feels heavy | Clear naming and help text. Research = "what exists, what are the options." Discuss = "what are we building, what decisions do we make." |
+| Research artifacts not visible to teammates | One developer researches but others don't see findings because they are in a branch | Research in `.branchos/shared/research/` (shared layer) means it is visible on any branch after commit+push |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **GitHub Issues sync:** Often missing the "update existing issue" path -- verify that running `sync-issues` twice produces zero new issues on second run
-- [ ] **GitHub Issues sync:** Often missing label creation before issue creation -- verify that `branchos:<feature-id>` labels are created first
-- [ ] **GitHub Issues sync:** Often missing error handling for unauthenticated `gh` -- verify clear error when `gh auth status` fails
-- [ ] **PR-FAQ ingestion:** Often missing frontmatter validation -- verify that malformed YAML frontmatter produces a helpful error, not a crash or silent data loss
-- [ ] **PR-FAQ ingestion:** Often missing encoding handling -- verify UTF-8 with special characters (accented names, em dashes) works
-- [ ] **Feature registry:** Often missing the link back from workstream to feature -- verify that `workstream create --feature X` stores `featureId` in `meta.json` AND that context assembly includes feature acceptance criteria
-- [ ] **Feature registry:** Often missing the `status` lifecycle -- verify that workstream completion updates feature status
-- [ ] **Roadmap generation:** Often missing dependency validation -- verify that circular dependencies in features are detected and reported
-- [ ] **Schema migration:** Often missing migration tests for existing v1 workstreams -- verify that a real v1 `state.json` with active phases migrates cleanly to v3 with new fields defaulted
-- [ ] **Context assembly:** Often missing feature context in the packet -- verify that when a workstream has a linked feature, the acceptance criteria appear in the context output
-- [ ] **Slash command installation:** Often missing project-level command support -- verify commands work from `.claude/commands/` in the project root (not just global `~/.claude/commands/`)
-- [ ] **Slash command content:** Often missing `$ARGUMENTS` passthrough -- verify new slash commands accept and use arguments
+- [ ] **Research command works:** Often missing integration with discuss-phase -- verify that `/branchos:discuss-phase` actually loads and references research artifacts when they exist
+- [ ] **Research files written:** Often missing summary section -- verify that research files have a structured summary block (not just raw findings) that context assembly can extract
+- [ ] **Context assembly updated:** Often missing research in context packet -- verify `/branchos:context` includes research summary when research exists for the current feature
+- [ ] **Research without workstream:** Often missing project-level research path -- verify `/branchos:research` works when no workstream is active (pre-workstream research on main branch)
+- [ ] **Artifact continuity:** Often missing structured question/finding format -- verify that a new Claude session can read research artifacts and continue meaningfully without prior conversation context
+- [ ] **Git integration:** Often missing sensible commit strategy -- verify research sessions do not produce 10+ commits per session
+- [ ] **Feature linkage:** Often missing feature-to-research association -- verify that feature-linked workstreams surface relevant research in context assembly output
+- [ ] **Allowed-tools scope:** Often missing necessary tools for research -- verify the research slash command's `allowed-tools` includes WebSearch, WebFetch, Read, Glob, Grep so Claude can actually investigate
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Duplicate GitHub Issues created | LOW | Search and close duplicates manually on GitHub; add dedup logic with label-based matching; re-run sync |
-| PR-FAQ parser breaks on real input | LOW | Fix parser, re-ingest PR-FAQ; no data loss since PR-FAQ.md is the source document |
-| Roadmap refresh overwrites manual edits | MEDIUM | Recover edits from `git diff HEAD~1 -- .branchos/shared/ROADMAP.md`; redesign refresh to use proposed-file pattern |
-| Schema migration corrupts state files | HIGH | Restore from git (`git checkout HEAD~1 -- .branchos/`); add migration dry-run mode that validates without writing; snapshot state before migration |
-| Feature status drift between local and GitHub | LOW | Accept it as expected behavior; document that local files are authoritative for BranchOS, GitHub is authoritative for team discussion |
-| Slash commands break after Claude Code update | MEDIUM | Check Claude Code changelog for breaking changes; update install targets; CLI commands still work as fallback |
-| Feature file schema has no version field | HIGH | Requires touching every feature file to add `schemaVersion`; prevent by including it from day one |
+| Context bloat from research | LOW | Add summary extraction to `assembleContext`, update to use summary only. Research files themselves don't need to change -- just how they're consumed. |
+| Over-engineered state machine | MEDIUM | Simplify state model, remove transition guards, migrate state data. Harder if other commands depend on research state transitions. |
+| Scope creep (built too much) | HIGH | Cannot easily un-ship features users depend on. Must maintain or deprecate. Prevention is critical here. |
+| Research in wrong storage location (workstream instead of shared) | MEDIUM | Write migration script to move files from workstream dirs to shared. Update path references in all commands. |
+| Broken discuss-phase integration | LOW | Update discuss-phase slash command markdown to read research files in Step 3. No TypeScript changes needed. |
+| Git history bloat from research commits | LOW (for future) | Cannot rewrite history easily, but can fix commit strategy going forward. Squash research commits on feature branches before merge. |
+| Conversation continuity failure | LOW | Improve research file structure to be more self-contained. Update slash command prompt to explicitly instruct "read existing research first." No code changes. |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| PR-FAQ parsing brittleness | PR-FAQ ingestion (Phase 1) | Test with 3+ differently-formatted PR-FAQ documents including one written by a non-developer |
-| Schema migration complexity | Foundation/PR-FAQ (Phase 1) | All new file types have `schemaVersion` in frontmatter; reuse `migrateIfNeeded` pattern |
-| Roadmap refresh destroys edits | Roadmap generation (Phase 2) | Test: generate, manually edit, refresh, verify edits preserved or proposed-file created |
-| Feature registry staleness / source of truth | Feature registry (Phase 3) | Feature file is the only place status changes; no GitHub-to-local sync code exists |
-| GitHub Issues duplication | GitHub Issues sync (Phase 4) | Integration test: run sync twice, assert zero new issues on second run |
-| Feature-workstream linking gaps | Feature-aware workstreams (Phase 5) | Verify `featureId` in `meta.json` AND acceptance criteria in context packet output |
-| Context assembly bloat from features | Enhanced context (Phase 5/6) | Measure context packet size with 20+ feature files; verify only the relevant feature is included |
-| Slash command migration breakage | Every phase (cross-cutting constraint) | All new features have both CLI command and slash command; CLI prints deprecation notice, not error |
-| Slash commands vs skills directory | Installation (Phase 1 or dedicated) | Test install to both `commands/` and `skills/` directories; test with Claude Code 2.1.3+ |
-| Single source of truth for feature status | Feature registry + GitHub sync phases | Audit: grep codebase for all places that write to feature status field; must be exactly one code path |
+| Context window bloat | Phase 1: Research storage design | Context packet with research stays under 500 lines; summary is under 200 lines |
+| Over-engineered state machine | Phase 1: Research storage design | Research tracking uses 3 or fewer status values; no transition validation code exists |
+| Research scope creep | Phase 0: Requirements/scoping | Written "out of scope" list exists in milestone requirements; reviewed before each phase |
+| Breaking discuss/plan/execute flow | Phase 1: Storage design + Phase 2: Command design | Research lives in `.branchos/shared/research/`; discuss-phase references it; no `research: PhaseStep` in Phase interface |
+| Conversation persistence gap | Phase 2: Slash command design | New Claude session can continue research from artifacts alone; tested by running command in fresh conversation |
+| Git history bloat | Phase 2: Slash command implementation | Research session produces at most 1-2 commits total |
+| Research without workstream | Phase 1: Storage design | `/branchos:research` works on main branch with no active workstream |
+| Discuss-phase integration | Phase 3: Integration | `/branchos:discuss-phase` reads and surfaces existing research artifacts |
 
 ## Sources
 
-- Codebase analysis: `src/state/schema.ts` (existing migration system), `src/state/meta.ts` (WorkstreamMeta interface), `src/context/assemble.ts` (AssemblyInput with 14 fields), `src/cli/install-commands.ts` (slash command content as string literals)
-- [GitHub CLI `gh issue list` documentation](https://cli.github.com/manual/gh_issue_list) -- search and filter capabilities
-- [GitHub CLI `gh issue create` documentation](https://cli.github.com/manual/gh_issue_create) -- no built-in deduplication
-- [Claude Code skills documentation](https://code.claude.com/docs/en/skills) -- unified commands/skills system
-- [Claude Code slash commands to skills merge (v2.1.3, January 2026)](https://medium.com/@joe.njenga/claude-code-merges-slash-commands-into-skills-dont-miss-your-update-8296f3989697) -- backwards compatible
-- [SSW Frontmatter best practices](https://www.ssw.com.au/rules/best-practices-for-frontmatter-in-markdown) -- YAML frontmatter formatting
-- [Idempotent REST API design patterns](https://restfulapi.net/idempotent-rest-apis/) -- deduplication strategies
-- Prior v1 pitfalls research (2026-03-07) -- git merge conflicts, orphaned state, context explosion pitfalls remain relevant
+- Direct codebase analysis: `src/cli/context.ts` (AssemblyInput with 14 fields, context assembly flow), `src/state/state.ts` (WorkstreamState and Phase interfaces), `commands/branchos:discuss-phase.md` (8-step slash command pattern with auto-commit), `commands/branchos:context.md` (context loading pattern)
+- BranchOS PROJECT.md (v2.1 milestone definition, architectural constraints, key decisions)
+- Prior v2.0 pitfalls research (2026-03-09) -- established patterns for integration gotchas and state management
+- Claude Code slash command architecture constraints: stateless invocations, `allowed-tools` scoping, `$ARGUMENTS` passthrough pattern
 
 ---
-*Pitfalls research for: BranchOS v2.0 project-level planning layer*
-*Researched: 2026-03-09*
+*Pitfalls research for: BranchOS v2.1 Interactive Research Slash Commands*
+*Researched: 2026-03-11*

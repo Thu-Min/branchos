@@ -1,497 +1,484 @@
-# Architecture Research
+# Architecture Research: Interactive Research Integration (v2.1)
 
-**Domain:** CLI-first project planning layer for AI-assisted development tool
-**Researched:** 2026-03-09
-**Confidence:** HIGH
+**Domain:** Interactive research slash commands for CLI-driven AI workflow tool
+**Researched:** 2026-03-11
+**Confidence:** HIGH (based on direct codebase analysis of existing v2.0 architecture)
 
-## System Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Slash Commands (Claude Code)                  │
-│  /branchos:discuss-project  /branchos:plan-roadmap              │
-│  /branchos:sync-issues      /branchos:refresh-roadmap           │
-│  /branchos:context  /branchos:discuss-phase  (existing)         │
-├─────────────────────────────────────────────────────────────────┤
-│                    CLI Bootstrapper (Commander)                  │
-│  branchos init | install-commands | context | features          │
-├───────────┬─────────────┬──────────────┬────────────────────────┤
-│  Project  │  Feature    │  GitHub      │  Context               │
-│  Layer    │  Registry   │  Issues      │  Assembly              │
-│  (NEW)    │  (NEW)      │  Sync (NEW)  │  (ENHANCED)            │
-├───────────┴─────────────┴──────────────┴────────────────────────┤
-│                    State Layer                                   │
-│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
-│  │ Shared State   │  │ Workstream   │  │ Config           │     │
-│  │ PR-FAQ.md      │  │ State        │  │ config.json      │     │
-│  │ ROADMAP.md     │  │ meta.json    │  │                  │     │
-│  │ features/*.md  │  │ state.json   │  │                  │     │
-│  │ codebase/*     │  │ phases/*     │  │                  │     │
-│  └────────────────┘  └──────────────┘  └──────────────────┘     │
-├─────────────────────────────────────────────────────────────────┤
-│                    Git Layer (simple-git)                        │
-│  addAndCommit | getCurrentBranch | getDiff | getMergeBase        │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Status |
-|-----------|----------------|--------|
-| Slash Commands | AI-driven workflow orchestration in Claude Code | Existing (5), new (4-5 needed) |
-| CLI Bootstrapper | `init`, `install-commands`, data query commands (`features`, `context`) | Existing, shrinks in v2 |
-| Project Layer | PR-FAQ ingestion, roadmap generation pipeline | NEW |
-| Feature Registry | Feature CRUD, status lifecycle, acceptance criteria storage | NEW |
-| GitHub Issues Sync | Create/update GitHub Issues from features via `gh` CLI | NEW |
-| Context Assembly | Build context packets from shared + workstream + feature data | ENHANCED |
-| State Layer | File-based JSON/Markdown persistence in `.branchos/` | Existing, extended |
-| Git Layer | Branch ops, diffs, commits via simple-git | Existing, minor additions |
-
-## How New Components Integrate with Existing Architecture
-
-### Integration Principle: Extend, Don't Replace
-
-The existing two-layer state model (shared + workstream) remains intact. The v2 features add new files to the shared layer and new fields to workstream metadata. No existing interfaces change shape -- they gain optional fields.
-
-### Layer 1: Shared State Extensions
-
-**Current shared state:** `.branchos/shared/codebase/*.md`
-
-**New shared state:**
+## System Overview: How Research Fits
 
 ```
-.branchos/shared/
-  codebase/                    # EXISTING - untouched
-    ARCHITECTURE.md
-    CONVENTIONS.md
-    MODULES.md
-    STACK.md
-    CONCERNS.md
-  PR-FAQ.md                    # NEW - product definition document
-  PR-FAQ.hash                  # NEW - hash of PR-FAQ.md for change detection
-  ROADMAP.md                   # NEW - milestones + feature breakdown
-  features/                    # NEW - feature registry
-    <feature-id>.json          # Structured data (status, issue link, etc.)
-    <feature-id>.md            # Human-readable spec + acceptance criteria
+                         BranchOS Architecture (v2.0 + v2.1 additions)
+ ====================================================================
+
+ Slash Commands (Claude Code)
+ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐
+ │ /context │ │ /discuss │ │  /plan   │ │ /execute │ │ /research │ <-- NEW
+ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └─────┬─────┘
+      │            │            │            │              │
+ ─────┴────────────┴────────────┴────────────┴──────────────┴─────
+                    Context Assembly Layer
+ ┌────────────────────────────────────────────────────────────────┐
+ │  assembleContext() — pure function, no I/O                     │
+ │  Input: AssemblyInput   Output: ContextPacket                  │
+ │  v2.1: + researchContext field in AssemblyInput                │
+ └──────────┬─────────────────────────────────────────────────────┘
+            │
+ ─────────────────────────────────────────────────────────────────
+                         State Layer
+ ┌──────────────────────────┐  ┌──────────────────────────────────┐
+ │  Shared State             │  │  Workstream State                │
+ │  .branchos/shared/        │  │  .branchos/workstreams/<id>/     │
+ │  ├── codebase/            │  │  ├── meta.json                  │
+ │  ├── features/            │  │  │   (+ researchRefs: ["R-001"])│
+ │  ├── prfaq/               │  │  ├── state.json                 │
+ │  └── research/       NEW  │  │  ├── decisions.md               │
+ │      ├── index.json       │  │  └── phases/<n>/                 │
+ │      ├── R-001-<slug>.md  │  │      ├── discuss.md             │
+ │      └── R-002-<slug>.md  │  │      ├── plan.md                │
+ └──────────────────────────┘  │      └── execute.md              │
+                                └──────────────────────────────────┘
 ```
 
-**Key decision: JSON + Markdown dual files for features.** Use `.json` for machine-readable state (status, issue number, milestone, branch name) and `.md` for human-readable content (description, acceptance criteria). The JSON is the source of truth for state; the Markdown is the source of truth for content. This avoids parsing Markdown for status queries while keeping specs human-reviewable in PRs.
+## Key Architectural Decision: Research Lives in Shared State
 
-### Layer 2: Workstream Meta Extensions
+**Decision: `.branchos/shared/research/`**
 
-**Current `meta.json` (WorkstreamMeta interface in `src/state/meta.ts`):**
+Research is domain knowledge, not workstream-specific work. A research session on "authentication patterns" is valuable to every workstream, not just the one that triggered it. This matches how `codebase/`, `features/`, and `prfaq/` already work -- repo-level knowledge in shared state, workstream-scoped artifacts in workstream directories.
+
+Workstreams hold references, not copies. A workstream's `meta.json` gains an optional `researchRefs` array linking to relevant research IDs. Context assembly reads the referenced research at packet-build time.
+
+## Component Responsibilities
+
+| Component | Responsibility | New / Modified |
+|-----------|----------------|----------------|
+| `commands/branchos:research.md` | Slash command for conversational research | **NEW** |
+| `src/research/types.ts` | Research artifact types, status type, index type | **NEW** |
+| `src/research/store.ts` | Read/write research files and index.json | **NEW** |
+| `src/research/slug.ts` | Topic-to-filename slug conversion | **NEW** |
+| `src/research/index.ts` | Barrel export | **NEW** |
+| `src/context/assemble.ts` | Include research context in context packets | **MODIFIED** |
+| `src/cli/context.ts` | Load research files for referenced workstreams | **MODIFIED** |
+| `src/commands/index.ts` | Register `branchos:research.md` in COMMANDS record | **MODIFIED** |
+| `src/constants.ts` | Add `RESEARCH_DIR = 'research'` | **MODIFIED** |
+| `src/state/meta.ts` | Add optional `researchRefs?: string[]` to WorkstreamMeta | **MODIFIED** |
+
+## Research Artifact Format
+
+Research files use YAML frontmatter + markdown body, matching the existing pattern in feature files and codebase map files. Reuses `parseFrontmatter`/`stringifyFrontmatter` from `src/roadmap/frontmatter.ts`.
+
+```markdown
+---
+id: R-001
+topic: "Authentication patterns for Node.js CLI tools"
+status: draft
+createdAt: "2026-03-11T10:00:00Z"
+updatedAt: "2026-03-11T10:30:00Z"
+generator: branchos/research
+tags: ["auth", "security"]
+---
+
+# Authentication Patterns for Node.js CLI Tools
+
+## Summary
+
+[High-level findings]
+
+## Key Findings
+
+[Detailed research results organized by subtopic]
+
+## Recommendations
+
+[Opinionated recommendations with rationale]
+
+## Sources
+
+[References consulted]
+```
+
+### Why This Format
+
+- **YAML frontmatter**: Matches existing patterns. No new parsing logic needed.
+- **Markdown body**: Human-readable, git-diffable, works directly as Claude Code context.
+- **`id` field**: Auto-incremented `R-001`, `R-002`, matching feature ID pattern `F-001`.
+- **`status` field**: Two states only -- `draft` (in progress) and `complete` (finalized). Research is informal knowledge capture, not a tracked deliverable. A richer lifecycle would add ceremony without value.
+- **`tags` field**: Lightweight categorization for filtering when assembling context packets.
+
+### Research Index File
+
+`.branchos/shared/research/index.json` provides fast lookups without scanning every file:
+
 ```json
 {
-  "schemaVersion": 2,
-  "workstreamId": "auth-system",
-  "branch": "feature/auth-system",
-  "status": "active",
-  "createdAt": "...",
-  "updatedAt": "..."
+  "schemaVersion": 1,
+  "nextId": 3,
+  "entries": [
+    { "id": "R-001", "topic": "Auth patterns", "status": "complete", "filename": "R-001-auth-patterns.md" },
+    { "id": "R-002", "topic": "Database options", "status": "draft", "filename": "R-002-database-options.md" }
+  ]
 }
 ```
 
-**Enhanced `meta.json` (v2):**
-```json
-{
-  "schemaVersion": 3,
-  "workstreamId": "auth-system",
-  "branch": "feature/auth-system",
-  "status": "active",
-  "createdAt": "...",
-  "updatedAt": "...",
-  "featureId": "auth-system",
-  "issueNumber": 42
+**Why an index file when features don't have one:** The feature registry scans `F-*.md` files (currently `readAllFeatures` in `src/roadmap/feature-file.ts`). Research benefits from an index because the `/research` slash command needs to quickly show available topics during conversational flow, and a JSON index avoids parsing frontmatter from every file on each invocation.
+
+## Architectural Patterns
+
+### Pattern 1: Bookend Slash Command (Conversational Research)
+
+**What:** Unlike existing slash commands which are single-shot (run, produce artifact, commit), the research command uses a "bookend" pattern -- it frames the start of a conversation and captures the end.
+
+**How it works within Claude Code constraints:** Slash commands are prompt templates executed by Claude Code, not interactive programs. The "conversation" happens naturally through Claude Code's multi-turn chat. The slash command provides initial context framing and instructions for how to conduct research, then the user converses normally. A subcommand invocation saves the findings.
+
+**Implementation:**
+
+```
+/branchos:research <topic>         -- Start or resume research session
+/branchos:research --save          -- Save current findings to artifact
+/branchos:research --list          -- List existing research topics
+/branchos:research --view R-001    -- View specific research
+```
+
+**Trade-offs:**
+- Pro: No custom interaction loop -- uses Claude Code's native conversation model
+- Pro: Research conversation benefits from Claude's full context and capabilities
+- Con: User must explicitly save (no auto-capture)
+- Con: If user forgets to save, research is lost (mitigated by being explicit in the slash command instructions)
+
+**Example slash command structure:**
+
+```markdown
+---
+description: Conduct interactive domain research
+allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
+---
+
+# Research
+
+## Parse arguments
+- If $ARGUMENTS is "--list": read index.json, display table, STOP
+- If $ARGUMENTS is "--view R-NNN": read that file, display, STOP
+- If $ARGUMENTS is "--save": [save flow]
+- Otherwise: $ARGUMENTS is the research topic
+
+## Start research session
+1. Read .branchos/shared/research/index.json (create if missing)
+2. Check if topic matches existing entry (resume vs new)
+3. If resuming: read existing file, present findings so far
+4. If new: allocate next ID from index
+
+## Conduct research
+Present yourself as a research assistant. Investigate the topic using:
+- Your training knowledge
+- Codebase context from .branchos/shared/codebase/
+- User's questions and clarifications
+
+Structure your research around: findings, recommendations, trade-offs.
+
+## When user says "save" or runs /branchos:research --save
+1. Compile findings into research artifact format
+2. Write to .branchos/shared/research/R-NNN-<slug>.md
+3. Update index.json
+4. Auto-commit
+
+$ARGUMENTS
+```
+
+### Pattern 2: Shared-First with Workstream References
+
+**What:** Research artifacts live in shared state. Workstreams hold references, not copies.
+
+**When to use:** Always for research. Research is reusable knowledge.
+
+```typescript
+// In WorkstreamMeta (src/state/meta.ts)
+export interface WorkstreamMeta {
+  // ... existing fields (unchanged) ...
+  researchRefs?: string[];  // e.g., ["R-001", "R-003"]
 }
 ```
 
-New fields are optional -- workstreams created without `--feature` still work exactly as before. Schema migration from v2 to v3 adds `featureId: null, issueNumber: null`.
+Workstreams link to research via `researchRefs`. This is set when:
+1. User creates a workstream with `--research R-001` flag
+2. User manually adds a reference later
 
-## Recommended Project Structure
+This matches how `featureId` already links workstreams to features -- optional pointer into shared state.
+
+### Pattern 3: Pure Context Assembly Extension
+
+**What:** Extend `AssemblyInput` interface with `researchContext: string | null`. The pure `assembleContext` function stays pure -- callers resolve data, the function assembles text.
+
+**This follows the existing pattern exactly.** Looking at `src/cli/context.ts`, the `contextHandler` reads files from disk, then passes string values to `assembleContext()`. Research follows the same path:
+
+```typescript
+// In src/context/assemble.ts
+
+// Extended AssemblyInput
+export interface AssemblyInput {
+  // ... all existing fields unchanged ...
+  researchContext: string | null;  // NEW: concatenated relevant research
+}
+
+// Extended STEP_SECTIONS
+const STEP_SECTIONS: Record<WorkflowStep, string[]> = {
+  discuss: ['featureContext', 'researchContext', 'architecture', 'conventions', 'decisions', 'branchDiff'],
+  plan: ['featureContext', 'researchContext', 'discuss', 'modules', 'conventions', 'decisions', 'branchDiff'],
+  execute: ['featureContext', 'plan', 'execute', 'branchDiff', 'decisions'],  // NO research in execute
+  fallback: ['featureContext', 'architecture', 'conventions', 'decisions', 'branchDiff', 'hint'],
+};
+```
+
+**Research context is included in `discuss` and `plan` steps but NOT `execute`.** By execution time, research findings should already be incorporated into the plan. This keeps execute context packets focused.
+
+**In `src/cli/context.ts` (contextHandler):**
+
+```typescript
+// After loading feature context (existing code around line 72-86)
+let researchContext: string | null = null;
+try {
+  const meta = await readMeta(metaPath);
+  if (meta.researchRefs && meta.researchRefs.length > 0) {
+    const researchDir = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, RESEARCH_DIR);
+    const parts: string[] = [];
+    for (const refId of meta.researchRefs) {
+      const research = await readResearchById(researchDir, refId);
+      if (research) {
+        parts.push(`### ${research.topic}\n\n${research.body}`);
+      }
+    }
+    if (parts.length > 0) {
+      researchContext = parts.join('\n\n---\n\n');
+    }
+  }
+} catch {
+  // Research files missing/unreadable - proceed without
+}
+```
+
+## New Source Files
 
 ```
 src/
-├── cli/                       # EXISTING - Commander entry + subcommands
-│   ├── index.ts               # Commander program setup
-│   ├── init.ts                # branchos init
-│   ├── install-commands.ts    # Slash command installer (MODIFIED: add new commands)
-│   ├── context.ts             # branchos context (MODIFIED: feature data in packets)
-│   ├── features.ts            # NEW: branchos features (list/show)
-│   ├── workstream.ts          # MODIFIED: --feature and --issue flags
-│   └── ...                    # Existing commands unchanged
+├── research/                  # NEW module
+│   ├── index.ts               # Barrel: export { readResearch, writeResearch, ... }
+│   ├── types.ts               # ResearchEntry, ResearchIndex, ResearchStatus
+│   ├── store.ts               # readResearch, writeResearch, readIndex, writeIndex, allocateId, readResearchById
+│   └── slug.ts                # topicToSlug() -- same pattern as roadmap/slug.ts
 ├── context/
-│   └── assemble.ts            # MODIFIED: add feature sections to packets
-├── project/                   # NEW - project-level planning module
-│   ├── pr-faq.ts              # PR-FAQ read/hash/change-detection
-│   └── roadmap.ts             # Roadmap read/parse helpers
-├── feature/                   # NEW - feature registry module
-│   ├── registry.ts            # CRUD: create, read, list, update features
-│   ├── lifecycle.ts           # Status transitions (unassigned -> assigned -> in-progress -> complete)
-│   └── types.ts               # Feature interfaces
-├── github/                    # NEW - GitHub integration module
-│   └── issues.ts              # Create/update/link issues via gh CLI subprocess
-├── git/
-│   └── index.ts               # EXISTING - minor additions if needed
-├── state/
-│   ├── config.ts              # EXISTING - may add project-level config fields
-│   ├── meta.ts                # MODIFIED: add featureId, issueNumber fields
-│   ├── schema.ts              # MODIFIED: add v2->v3 migration
-│   └── state.ts               # EXISTING - unchanged
-├── map/                       # EXISTING - unchanged
-├── phase/                     # EXISTING - unchanged
-├── workstream/
-│   ├── create.ts              # MODIFIED: accept featureId + issueNumber
-│   └── ...                    # Existing files unchanged
-├── constants.ts               # MODIFIED: add FEATURES_DIR, PR_FAQ_FILE, etc.
-├── output/                    # EXISTING - unchanged
-└── index.ts                   # EXISTING - unchanged
+│   └── assemble.ts            # MODIFIED: +researchContext in AssemblyInput, +researchContext in STEP_SECTIONS, +case in getSection
+├── cli/
+│   └── context.ts             # MODIFIED: load research files when meta.researchRefs exists
+├── commands/
+│   └── index.ts               # MODIFIED: add branchos:research.md to COMMANDS record
+├── constants.ts               # MODIFIED: add RESEARCH_DIR = 'research'
+└── state/
+    └── meta.ts                # MODIFIED: add optional researchRefs?: string[] to WorkstreamMeta
+
+commands/
+└── branchos:research.md       # NEW slash command file
 ```
 
 ### Structure Rationale
 
-- **`project/`:** Isolated module for project-level concerns (PR-FAQ, roadmap). These are shared-layer operations that don't touch workstreams.
-- **`feature/`:** Separate from `project/` because features have their own lifecycle independent of roadmap generation. Roadmap creates features; features live independently after that.
-- **`github/`:** Thin wrapper around `gh` CLI subprocess calls. Kept separate because it has an external dependency (gh CLI) and is the only module that makes network calls.
-- **Slash commands stay in `install-commands.ts`:** The existing pattern of embedding slash command content as string constants in the `COMMANDS` map within `install-commands.ts` works and should continue for new commands.
-
-## Architectural Patterns
-
-### Pattern 1: Slash-Command-Driven Workflows (AI as Controller)
-
-**What:** Slash commands contain detailed step-by-step instructions that Claude Code executes. The AI reads/writes `.branchos/` files directly. The CLI provides data query commands (`context`, `features`) but does NOT orchestrate workflows.
-
-**When to use:** All project-level planning workflows (discuss-project, plan-roadmap, refresh-roadmap, sync-issues).
-
-**Trade-offs:**
-- Pro: Claude Code has full context, can make intelligent decisions, handles unstructured input (PR-FAQ discussion)
-- Pro: No need to build complex CLI argument parsing for nuanced workflows
-- Con: Behavior varies between Claude Code sessions (non-deterministic)
-- Con: Harder to test programmatically
-
-This is the established v1 pattern. The `branchos:discuss-phase.md` slash command is the template -- it gives Claude step-by-step instructions for reading state, generating artifacts, writing files, updating JSON, and committing. New v2 slash commands should follow the same structure.
-
-### Pattern 2: JSON for State, Markdown for Content
-
-**What:** Machine-readable state lives in `.json` files; human-readable content lives in `.md` files. Both are committed to git.
-
-**When to use:** Any entity that needs both programmatic querying AND human review (features, workstream state).
-
-**Trade-offs:**
-- Pro: CLI can query feature status without parsing Markdown
-- Pro: Feature specs are reviewable in GitHub PRs as plain Markdown
-- Con: Two files per feature (manageable -- teams won't have 100+ features)
-
-**Example:**
-```
-features/
-  auth-system.json    # {"id":"auth-system","status":"assigned","milestone":"M1","issueNumber":42,"branch":"feature/auth-system"}
-  auth-system.md      # ## Auth System\n### Description\n...\n### Acceptance Criteria\n- [ ] ...
-```
-
-### Pattern 3: Subprocess Shell-out for External Tools
-
-**What:** GitHub operations use `child_process.execSync` to call `gh` CLI, NOT the GitHub REST API directly.
-
-**When to use:** GitHub Issues sync.
-
-**Trade-offs:**
-- Pro: No OAuth token management, no API client dependency, no rate limit handling
-- Pro: `gh` CLI handles auth (user already authenticated)
-- Pro: Zero new npm dependencies
-- Con: Requires `gh` CLI installed (acceptable -- Claude Code users likely have it)
-- Con: Parsing CLI output is fragile (mitigate with `--json` flag on `gh`)
-
-**Example:**
-```typescript
-import { execSync } from 'child_process';
-
-export function createIssue(opts: {
-  title: string;
-  body: string;
-  labels: string[];
-  cwd: string;
-}): number {
-  const labelFlags = opts.labels.map(l => `--label "${l}"`).join(' ');
-  const result = execSync(
-    `gh issue create --title "${opts.title}" --body-file - ${labelFlags} --json number`,
-    { input: opts.body, encoding: 'utf-8', cwd: opts.cwd }
-  );
-  return JSON.parse(result).number;
-}
-```
-
-### Pattern 4: Hash-Based Change Detection for PR-FAQ Drift
-
-**What:** Store a SHA-256 hash of `PR-FAQ.md` content in `PR-FAQ.hash`. When `refresh-roadmap` runs, compare current hash to stored hash to detect changes.
-
-**When to use:** PR-FAQ change detection (explicit, not automatic -- per design decision).
-
-**Trade-offs:**
-- Pro: Simple, deterministic, no file-watching complexity
-- Pro: Works across git branches and team members
-- Con: Only detects changes when user explicitly runs refresh (by design)
-
-```typescript
-import { createHash } from 'crypto';
-
-export function hashContent(content: string): string {
-  return createHash('sha256').update(content).digest('hex').slice(0, 12);
-}
-```
+- **`src/research/`**: Follows existing module-per-domain pattern (`prfaq/`, `roadmap/`, `phase/`, `map/`). Each domain gets its own directory.
+- **Reuse `frontmatter.ts`**: The existing hand-rolled YAML frontmatter parser at `src/roadmap/frontmatter.ts` handles reading/writing research files. Import it -- do not duplicate.
+- **Reuse slug pattern**: The `src/roadmap/slug.ts` converts titles to filenames. Research needs the same for topic-to-filename. Either import directly or extract to a shared utility if the slug logic is identical.
 
 ## Data Flow
 
-### PR-FAQ to Workstream Flow (End-to-End)
+### Research Creation Flow
 
 ```
-/branchos:discuss-project
+User: /branchos:research "authentication patterns for CLI tools"
     |
-    +-- Reads: .branchos/shared/codebase/* (architecture context)
-    +-- AI-guided discussion with user
-    +-- Writes: .branchos/shared/PR-FAQ.md
-                .branchos/shared/PR-FAQ.hash
+    v
+Slash command reads $ARGUMENTS, identifies topic
     |
-/branchos:plan-roadmap
+    v
+Read .branchos/shared/research/index.json
+    |-- Exists with matching topic? Resume: read existing file, present for continuation
+    |-- New topic? Allocate next ID (R-003), create draft skeleton
     |
-    +-- Reads: .branchos/shared/PR-FAQ.md
-    +--         .branchos/shared/codebase/* (for technical feasibility)
-    +-- AI generates roadmap + feature breakdown
-    +-- Writes: .branchos/shared/ROADMAP.md
-    +-- Writes: .branchos/shared/features/<id>.json  (per feature)
-                .branchos/shared/features/<id>.md     (per feature)
+    v
+Claude Code conducts conversational research
+(user asks questions, Claude investigates, back-and-forth in normal chat)
     |
-/branchos:sync-issues
+    v
+User: /branchos:research --save  (or says "save the research")
     |
-    +-- Reads: .branchos/shared/features/*.json (all features)
-    +--         .branchos/shared/features/*.md   (for issue body)
-    +-- Calls: gh issue create (per unsynced feature)
-    +-- Updates: .branchos/shared/features/<id>.json  (adds issueNumber)
+    v
+Compile findings into research artifact format
+Write to .branchos/shared/research/R-003-auth-patterns-cli.md
+Update index.json (add entry, increment nextId)
     |
-branchos workstream create --feature auth-system
-    |
-    +-- Reads: .branchos/shared/features/auth-system.json
-    +-- Creates: .branchos/workstreams/auth-system/meta.json
-    |            (with featureId + issueNumber populated)
-    +-- Creates: .branchos/workstreams/auth-system/state.json
-    +-- Updates: .branchos/shared/features/auth-system.json
-                 (status: "unassigned" -> "in-progress")
-    |
-/branchos:context
-    |
-    +-- Reads: existing context sources (codebase, phases, decisions)
-    +-- Reads: .branchos/shared/features/<featureId>.md  (NEW)
-    +-- Reads: .branchos/shared/ROADMAP.md               (NEW, for milestone context)
-    +-- Outputs: enhanced context packet with feature section
+    v
+git add .branchos/shared/research/ && git commit
 ```
 
-### Roadmap Refresh Flow
+### Research Consumption Flow (Context Packets)
 
 ```
-User edits PR-FAQ.md (directly or via /branchos:discuss-project)
+User: /branchos:context  (or /branchos:discuss-phase)
     |
-/branchos:refresh-roadmap
+    v
+contextHandler() loads workstream meta.json
+    |-- meta.researchRefs = ["R-001"]? Load those research files from shared/research/
+    |-- meta.researchRefs absent or empty? Skip research context
     |
-    +-- Reads: .branchos/shared/PR-FAQ.md
-    +-- Reads: .branchos/shared/PR-FAQ.hash  (previous hash)
-    +-- Computes: new hash
-    +-- Compares: old hash vs new hash
-    |   +-- SAME: "PR-FAQ unchanged. No refresh needed."
-    |   +-- DIFFERENT:
-    |       +-- Reads: existing ROADMAP.md + features/*.json
-    |       +-- AI identifies what changed and proposes roadmap updates
-    |       +-- Presents diff to user for approval
-    |       +-- Updates: ROADMAP.md, features/*.json, features/*.md
-    |       +-- Writes: new PR-FAQ.hash
-    +-- Commits changes
+    v
+assembleContext() receives researchContext: string | null
+    |-- step is 'discuss' or 'plan'? Include "Research" section
+    |-- step is 'execute'? Skip (research already baked into plan)
+    |
+    v
+Context packet output includes:
+  ## Research
+  ### Auth Patterns for CLI Tools
+  [findings from R-001]
 ```
 
-### Context Assembly Enhancement
+### Research Consumption Flow (Discuss/Plan Phases)
 
-**Current `AssemblyInput` interface** (from `src/context/assemble.ts`) includes: workstreamId, branch, phaseNumber, stepStatuses, detectedStep, staleness, architecture, conventions, modules, discussMd, planMd, executeMd, decisions, branchDiffNameStatus, branchDiffStat.
-
-**Enhanced `AssemblyInput` adds:**
-
-```typescript
-// New optional fields on AssemblyInput
-featureSpec: string | null;        // Content of features/<id>.md
-featureStatus: string | null;      // JSON stringified feature state
-milestoneContext: string | null;    // Relevant milestone section from ROADMAP.md
-acceptanceCriteria: string | null;  // Extracted from feature spec
+```
+User: /branchos:discuss-phase "implement user authentication"
+    |
+    v
+Slash command gathers context (existing behavior unchanged)
+    |
+    v
+ENHANCED: Slash command instructions say to also check
+.branchos/shared/research/ for topically relevant research
+    |-- Read index.json, scan topics for relevance
+    |-- Include relevant findings as additional context in discuss.md
+    |
+    v
+Generated discuss.md includes:
+  ## Related Research
+  See R-001 (Auth Patterns) for domain research on this topic.
+  Key findings: [summary from research artifact]
 ```
 
-**New sections in STEP_SECTIONS:**
+## Integration Points (Detailed)
 
-```typescript
-const STEP_SECTIONS: Record<WorkflowStep, string[]> = {
-  discuss: ['architecture', 'conventions', 'decisions', 'feature', 'branchDiff'],
-  plan: ['discuss', 'modules', 'conventions', 'decisions', 'feature', 'branchDiff'],
-  execute: ['plan', 'execute', 'branchDiff', 'decisions', 'acceptanceCriteria'],
-  fallback: ['architecture', 'conventions', 'decisions', 'feature', 'branchDiff', 'hint'],
-};
-```
+### New Components -> Existing Code
 
-The `feature` section is only populated when the workstream has `featureId` set in its meta. Otherwise it is omitted (backwards compatible with v1 workstreams). The `acceptanceCriteria` section appears during execute to remind developers what "done" looks like.
+| New Component | Depends On (Existing) | Integration Method |
+|---------------|----------------------|-------------------|
+| `research/store.ts` | `roadmap/frontmatter.ts` | Import `parseFrontmatter`/`stringifyFrontmatter` |
+| `research/slug.ts` | `roadmap/slug.ts` | Import or copy slug algorithm |
+| `research/store.ts` | `constants.ts` | Import `BRANCHOS_DIR`, `SHARED_DIR`, new `RESEARCH_DIR` |
+| `branchos:research.md` | `commands/index.ts` | Added to `COMMANDS` record |
 
-**Key: the `contextHandler` in `src/cli/context.ts` gains new reads.** After resolving the workstream, if `meta.featureId` exists, it reads the feature spec and extracts acceptance criteria. This follows the existing pattern where `contextHandler` gathers all data and passes it to the pure `assembleContext` function.
+### Existing Code -> New Components (Modifications)
 
-## Key Integration Points
+| Existing File | What Changes | Backward Compatible? |
+|---------------|-------------|---------------------|
+| `src/constants.ts` | Add `export const RESEARCH_DIR = 'research';` | Yes -- additive |
+| `src/state/meta.ts` | Add `researchRefs?: string[]` to `WorkstreamMeta` interface | Yes -- optional field, undefined in existing files |
+| `src/context/assemble.ts` | Add `researchContext: string \| null` to `AssemblyInput`, add `'researchContext'` to discuss/plan in `STEP_SECTIONS`, add case in `getSection()` | Yes -- callers pass null, existing packets unchanged |
+| `src/cli/context.ts` | After feature context loading, add research context loading block | Yes -- only activates when researchRefs present |
+| `src/commands/index.ts` | Add import + entry for `branchos:research.md` | Yes -- additive |
 
-### Modifications to Existing Files
+### What Does NOT Change
 
-| Existing File | Change | Details |
-|---------------|--------|---------|
-| `src/constants.ts` | Add constants | `FEATURES_DIR = 'features'`, `PR_FAQ_FILE = 'PR-FAQ.md'`, `ROADMAP_FILE = 'ROADMAP.md'`, `PR_FAQ_HASH_FILE = 'PR-FAQ.hash'` |
-| `src/state/meta.ts` | Extend `WorkstreamMeta` | Add optional `featureId?: string`, `issueNumber?: number` to interface; update `createMeta` to accept them |
-| `src/state/schema.ts` | Add migration | `v2 -> v3` migration: bump version, add `featureId: null, issueNumber: null` when `workstreamId` present |
-| `src/workstream/create.ts` | Accept new options | Add `featureId?: string`, `issueNumber?: number` to `createWorkstream` options; pass to `createMeta`; update feature status |
-| `src/context/assemble.ts` | Extend `AssemblyInput` | Add `featureSpec`, `featureStatus`, `milestoneContext`, `acceptanceCriteria` fields; add `feature` and `acceptanceCriteria` to `STEP_SECTIONS`; add cases to `getSection` |
-| `src/cli/context.ts` | Read feature data | When workstream meta has `featureId`, read `features/<id>.md` and `features/<id>.json`; pass into `AssemblyInput` |
-| `src/cli/install-commands.ts` | Add new slash commands | 4-5 new command string entries in `COMMANDS` map |
-
-### New Modules
-
-| Module | Depends On | Depended By |
-|--------|-----------|-------------|
-| `src/feature/types.ts` | Nothing | `registry.ts`, `lifecycle.ts`, CLI, context |
-| `src/feature/registry.ts` | `fs`, `types.ts`, `constants.ts` | CLI (`features` command), slash commands, `workstream/create.ts` |
-| `src/feature/lifecycle.ts` | `types.ts`, `registry.ts` | Slash commands, `workstream/create.ts` |
-| `src/project/pr-faq.ts` | `fs`, `crypto` | Slash commands (read/hash only) |
-| `src/project/roadmap.ts` | `fs` | Slash commands (read/parse only) |
-| `src/github/issues.ts` | `child_process` | Slash commands (sync-issues) |
-
-### External Dependencies
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| GitHub Issues | `gh` CLI subprocess via `child_process.execSync` | Requires `gh` CLI installed and authenticated; use `--json` flag for structured output; fail gracefully if `gh` not found |
-| Claude Code | Slash commands in `~/.claude/commands/` | AI executes instructions; reads/writes files directly |
-| Git | `simple-git` library (existing) | No changes to git integration pattern |
-
-## New Slash Commands Design
-
-### `/branchos:discuss-project`
-
-**Purpose:** AI-guided PR-FAQ creation
-**Reads:** `.branchos/shared/codebase/*` (for technical context)
-**Writes:** `.branchos/shared/PR-FAQ.md`, `.branchos/shared/PR-FAQ.hash`
-**Tools needed:** `Read, Glob, Grep, Write, Bash(git *)`
-**Pattern:** Interactive -- asks user questions, synthesizes answers into PR-FAQ format. Similar structure to `branchos:discuss-phase.md` but operates on shared state instead of workstream state.
-
-### `/branchos:plan-roadmap`
-
-**Purpose:** Generate roadmap and features from PR-FAQ
-**Reads:** `.branchos/shared/PR-FAQ.md`, `.branchos/shared/codebase/*`
-**Writes:** `.branchos/shared/ROADMAP.md`, `.branchos/shared/features/*.json`, `.branchos/shared/features/*.md`, `.branchos/shared/PR-FAQ.hash`
-**Tools needed:** `Read, Write, Bash(git *)`
-**Pattern:** Batch generation -- creates all feature files at once; creates feature IDs from titles (slugified, same logic as `slugifyBranch` in `src/workstream/resolve.ts`)
-
-### `/branchos:refresh-roadmap`
-
-**Purpose:** Update roadmap when PR-FAQ changes
-**Reads:** `.branchos/shared/PR-FAQ.md`, `.branchos/shared/PR-FAQ.hash`, existing features
-**Writes:** Updated ROADMAP.md, features, new hash
-**Tools needed:** `Read, Write, Bash(git *)`
-**Pattern:** Diff-based -- shows user what changed, proposes updates, waits for approval before writing. Must preserve feature status and issue links when updating.
-
-### `/branchos:sync-issues`
-
-**Purpose:** Create GitHub Issues from features
-**Reads:** `.branchos/shared/features/*.json`, `.branchos/shared/features/*.md`
-**Writes:** Updated `.json` files (adds issueNumber)
-**Tools needed:** `Read, Write, Bash(gh issue *), Bash(git *)`
-**Pattern:** Idempotent -- skips features that already have `issueNumber`; uses `gh` CLI with `--json` for structured output
-
-### `/branchos:features` (or CLI command)
-
-**Purpose:** List all features with status
-**Implementation:** Best as a CLI command (`branchos features`) that the slash command calls via `npx branchos features`, mirroring how `/branchos:context` delegates to `npx branchos context`. Listing features is deterministic -- no AI judgment needed.
-
-## Schema Migration Strategy
-
-**Current schema version:** 2 (applies to both `meta.json` and `state.json` via shared `migrateIfNeeded`)
-
-**New schema version:** 3
-
-The existing migration system in `src/state/schema.ts` uses a chained approach (`v0 -> v1 -> v2`). Adding `v2 -> v3`:
-
-```typescript
-{
-  fromVersion: 2,
-  migrate: (data) => {
-    const migrated = { ...data, schemaVersion: 3 };
-    // Only add feature fields to meta.json (identified by workstreamId presence)
-    if ('workstreamId' in data) {
-      (migrated as Record<string, unknown>).featureId = null;
-      (migrated as Record<string, unknown>).issueNumber = null;
-    }
-    return migrated;
-  },
-}
-```
-
-The existing chained migration pattern (`v0 -> v1 -> v2 -> v3`) handles all upgrade paths automatically. A workstream created in v1 hitting v3 code will migrate through `v0 -> v1 -> v2 -> v3` seamlessly. No data loss risk.
+| Component | Why Unchanged |
+|-----------|--------------|
+| `src/state/schema.ts` | `researchRefs` is optional on WorkstreamMeta -- no migration needed |
+| `src/state/state.ts` | WorkstreamState (phases, tasks) is unaffected by research |
+| `src/phase/index.ts` | Phase lifecycle (discuss/plan/execute) unchanged |
+| `src/roadmap/*` | Feature registry, roadmap parsing unchanged |
+| `src/prfaq/*` | PR-FAQ ingestion unchanged |
+| `src/github/*` | GitHub issues sync unchanged |
+| `src/map/*` | Codebase map unchanged |
+| `src/git/*` | Git operations unchanged |
+| All existing slash commands | Research is additive, existing commands work as before |
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Parsing Markdown for State
+### Anti-Pattern 1: Research in Workstream State
 
-**What people do:** Store feature status inside the Markdown file (e.g., YAML frontmatter `status: assigned`) and parse it for queries.
-**Why it's wrong:** Markdown parsing is fragile, error-prone, and couples human-readable format to machine operations. Frontmatter parsers add dependencies.
-**Do this instead:** Separate JSON for state, Markdown for content. Two files per feature is a small cost for clean separation.
+**What people do:** Store research artifacts under `.branchos/workstreams/<id>/research/` because "this workstream triggered it."
+**Why it is wrong:** Research is domain knowledge, not task state. Another developer on a different workstream needs the same auth research. Duplicating it defeats the shared knowledge model that the entire architecture is built on.
+**Do this instead:** Always write to `.branchos/shared/research/`. Link from workstream via `researchRefs` in `meta.json`.
 
-### Anti-Pattern 2: GitHub API Client Instead of gh CLI
+### Anti-Pattern 2: Building a Custom REPL
 
-**What people do:** Add `@octokit/rest` as a dependency, manage OAuth tokens, handle API pagination and rate limits.
-**Why it's wrong:** Massive complexity increase for simple issue creation. OAuth flows don't fit CLI-first tools. Token storage is a security concern.
-**Do this instead:** Shell out to `gh` CLI. Users already have it authenticated. Use `--json` output flag for structured parsing. Fail gracefully with a clear message if `gh` is not installed.
+**What people do:** Implement an interactive loop within the slash command, managing conversation state, turn tracking, and response formatting.
+**Why it is wrong:** Claude Code already IS the conversation runtime. A slash command is a prompt template, not a program. Building conversation management duplicates what Claude Code provides natively and creates fragile code.
+**Do this instead:** Use the "bookend" pattern. The slash command frames the start (loads context, identifies topic). The user converses normally. A second invocation (`--save`) persists findings.
 
-### Anti-Pattern 3: Auto-Detecting PR-FAQ Changes
+### Anti-Pattern 3: Dumping All Research Into Context
 
-**What people do:** Watch file system or check PR-FAQ hash on every command to auto-trigger roadmap refresh.
-**Why it's wrong:** Unwanted side effects. PR-FAQ may be mid-edit. Team should consciously decide when to refresh.
-**Do this instead:** Explicit `/branchos:refresh-roadmap` command. Store hash for comparison but only check it when user asks.
+**What people do:** Load every research file into the context packet because "more context is better."
+**Why it is wrong:** Context window is finite. Irrelevant research dilutes signal. A workstream about database optimization does not need auth research.
+**Do this instead:** Only include research explicitly referenced by the workstream (`researchRefs` in meta). If no refs, include nothing. Let the user be intentional about which research is relevant.
 
-### Anti-Pattern 4: Storing Feature State in Workstream
+### Anti-Pattern 4: Complex Research Status Lifecycle
 
-**What people do:** Duplicate feature data into the workstream directory so it's "local."
-**Why it's wrong:** Feature state must be shared across team members. Duplicating creates sync issues when multiple people reference the same feature.
-**Do this instead:** Features live in shared state only (`.branchos/shared/features/`). Workstream `meta.json` has a `featureId` pointer. Context assembly reads the shared feature file at packet-build time.
+**What people do:** Create `draft -> reviewing -> approved -> published -> archived -> deprecated` status lifecycle.
+**Why it is wrong:** Research is informal knowledge capture, not a governed deliverable. Over-engineering the lifecycle adds ceremony without value and creates state management burden.
+**Do this instead:** Two statuses: `draft` and `complete`. That is it.
 
-### Anti-Pattern 5: Building a Feature Assignment System
+### Anti-Pattern 5: Auto-Saving Research from Conversation
 
-**What people do:** Build assignment tracking, notification, ownership management inside the CLI.
-**Why it's wrong:** Rebuilding GitHub. Assignment, labels, boards, discussions already exist on GitHub.
-**Do this instead:** Sync features to GitHub Issues. Let GitHub handle assignment. Store only the issue number back in the feature JSON.
+**What people do:** Try to intercept or parse the Claude Code conversation to auto-extract research findings.
+**Why it is wrong:** Claude Code conversations are not programmatically accessible from slash commands. There is no API to read conversation history. Even if there were, auto-extraction would be unreliable.
+**Do this instead:** Explicit save. The slash command instructs Claude to compile findings when asked. The user triggers this intentionally.
 
-## Build Order (Dependency-Driven)
+## Schema Migration: Not Required
 
-The following order respects dependencies -- each step builds on what came before:
+The `WorkstreamMeta` interface gains `researchRefs?: string[]`. Because this field is optional (TypeScript `?`), existing `meta.json` files without it work perfectly -- `meta.researchRefs` evaluates to `undefined`, and context assembly skips research loading (the `if (meta.researchRefs && meta.researchRefs.length > 0)` guard handles this).
 
-| Order | Component | Depends On | Enables |
-|-------|-----------|-----------|---------|
-| 1 | Feature types + registry (`src/feature/`) | Nothing new | Everything else |
-| 2 | Constants + schema migration v2->v3 | Feature types | Workstream meta changes |
-| 3 | PR-FAQ module (`src/project/pr-faq.ts`) | Constants | Roadmap generation |
-| 4 | `/branchos:discuss-project` slash command | PR-FAQ module | `/branchos:plan-roadmap` |
-| 5 | Roadmap helpers (`src/project/roadmap.ts`) | Feature registry | Plan-roadmap command |
-| 6 | `/branchos:plan-roadmap` slash command | PR-FAQ + feature registry + roadmap | Features exist for sync |
-| 7 | GitHub issues module (`src/github/issues.ts`) | Feature registry | Issue sync command |
-| 8 | `/branchos:sync-issues` slash command | GitHub module + feature registry | Issue linking |
-| 9 | Enhanced workstream create (`--feature`, `--issue`) | Schema v3 + feature registry | Feature-aware workstreams |
-| 10 | Enhanced context assembly | Feature registry + enhanced meta | Feature context in packets |
-| 11 | `/branchos:refresh-roadmap` slash command | All above | Iterative planning |
-| 12 | `branchos features` CLI command | Feature registry | Quick queries |
-| 13 | Slash-command migration (move v1 CLI workflow commands) | All new commands stable | CLI simplification |
+Similarly, `AssemblyInput` gains `researchContext: string | null`. Callers that do not resolve research pass `null`, and `assembleContext` skips it via the existing `if (key === 'researchContext' && !input.researchContext) continue;` pattern (same as `featureContext`).
 
-**Rationale:** Feature types/registry first because every other component references them. PR-FAQ before roadmap because roadmap consumes PR-FAQ. GitHub sync after features exist. Context assembly enhancement after everything else is in place because it depends on feature data being real. Slash-command migration is separate cleanup work that should happen last, after the new commands are proven stable.
+**No schema version bump is needed.** No migration function is needed. This is a key advantage of using optional fields -- zero migration cost.
+
+## Suggested Build Order
+
+Based on dependency analysis, respecting what must exist before what can be built:
+
+### Step 1: Research Types and Store (no dependencies on existing code changes)
+
+New files only. Foundation that everything else builds on.
+
+- `src/research/types.ts` -- `ResearchEntry`, `ResearchIndex`, `ResearchStatus` types
+- `src/research/store.ts` -- `readResearch()`, `writeResearch()`, `readIndex()`, `writeIndex()`, `allocateId()`, `readResearchById()`
+- `src/research/slug.ts` -- `topicToSlug()` function
+- `src/research/index.ts` -- barrel export
+- `src/constants.ts` -- add `RESEARCH_DIR` constant
+- Unit tests for all of the above
+
+### Step 2: Slash Command (depends on Step 1 for types/store)
+
+- `commands/branchos:research.md` -- the full slash command prompt with argument parsing, research flow, and save flow
+- `src/commands/index.ts` -- add to `COMMANDS` record
+- Manual testing of the slash command in Claude Code
+
+### Step 3: Context Assembly Integration (depends on Step 1 for store)
+
+- `src/context/assemble.ts` -- add `researchContext` to `AssemblyInput`, add to `STEP_SECTIONS`, add `getSection` case
+- `src/cli/context.ts` -- load research files when workstream has `researchRefs`
+- `src/state/meta.ts` -- add optional `researchRefs` to `WorkstreamMeta`
+- Update existing context assembly tests (add `researchContext: null` to all existing test inputs)
+
+### Step 4: Cross-Command Integration (depends on Steps 2 and 3)
+
+- Update `commands/branchos:discuss-phase.md` to mention checking shared research for relevant context
+- Update `commands/branchos:plan-phase.md` similarly
+- Update `commands/branchos:create-workstream.md` to support `--research R-001` flag
+- Integration tests verifying research flows through to context packets
 
 ## Sources
 
-- Existing codebase analysis (HIGH confidence): `src/context/assemble.ts`, `src/state/meta.ts`, `src/state/schema.ts`, `src/cli/context.ts`, `src/cli/install-commands.ts`, `src/workstream/create.ts`
-- Vision document (HIGH confidence): `.planning/v2-VISION.md`
-- Project document (HIGH confidence): `.planning/PROJECT.md`
-- Claude Code slash command pattern (HIGH confidence): `.claude/commands/branchos:*.md` (observed working pattern from v1)
+- Direct analysis of `src/context/assemble.ts` -- AssemblyInput interface, STEP_SECTIONS map, getSection switch (HIGH confidence)
+- Direct analysis of `src/cli/context.ts` -- contextHandler data loading pattern, featureContext loading as reference pattern (HIGH confidence)
+- Direct analysis of `src/state/meta.ts` -- WorkstreamMeta interface, optional field pattern (HIGH confidence)
+- Direct analysis of `src/roadmap/frontmatter.ts` -- parseFrontmatter/stringifyFrontmatter reuse (HIGH confidence)
+- Direct analysis of `src/roadmap/feature-file.ts` -- feature file read/write pattern as reference (HIGH confidence)
+- Direct analysis of `src/state/schema.ts` -- migration system, schema version handling (HIGH confidence)
+- Direct analysis of `src/constants.ts` -- constant naming pattern (HIGH confidence)
+- Direct analysis of `commands/branchos:discuss-phase.md` -- slash command structure pattern (HIGH confidence)
+- Project context from `.planning/PROJECT.md` -- v2.1 milestone goals (HIGH confidence)
 
 ---
-*Architecture research for: BranchOS v2 project-level planning layer*
-*Researched: 2026-03-09*
+*Architecture research for: BranchOS v2.1 Interactive Research Integration*
+*Researched: 2026-03-11*

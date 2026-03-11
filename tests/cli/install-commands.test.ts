@@ -6,9 +6,9 @@ import { existsSync } from 'fs';
 
 describe('install-commands', () => {
   describe('COMMANDS record', () => {
-    it('has exactly 14 entries', async () => {
+    it('has exactly 15 entries', async () => {
       const { COMMANDS } = await import('../../src/commands/index.js');
-      expect(Object.keys(COMMANDS)).toHaveLength(14);
+      expect(Object.keys(COMMANDS)).toHaveLength(15);
     });
   });
 
@@ -29,7 +29,7 @@ describe('install-commands', () => {
       vi.restoreAllMocks();
     });
 
-    it('writes 14 files to commands/ target directory', async () => {
+    it('writes 15 files to commands/ target directory', async () => {
       // Dynamic import to pick up mocked HOME
       vi.resetModules();
       const { installSlashCommands } = await import('../../src/cli/install-commands.js');
@@ -37,17 +37,17 @@ describe('install-commands', () => {
 
       const commandsDir = join(tempHome, '.claude', 'commands');
       const files = await readdir(commandsDir);
-      expect(files.filter(f => f.startsWith('branchos:'))).toHaveLength(14);
+      expect(files.filter(f => f.startsWith('branchos:'))).toHaveLength(15);
     });
 
-    it('writes 14 files to skills/ target directory', async () => {
+    it('writes 15 files to skills/ target directory', async () => {
       vi.resetModules();
       const { installSlashCommands } = await import('../../src/cli/install-commands.js');
       installSlashCommands();
 
       const skillsDir = join(tempHome, '.claude', 'skills');
       const files = await readdir(skillsDir);
-      expect(files.filter(f => f.startsWith('branchos:'))).toHaveLength(14);
+      expect(files.filter(f => f.startsWith('branchos:'))).toHaveLength(15);
     });
 
     it('writes identical content to both directories', async () => {
@@ -83,7 +83,7 @@ describe('install-commands', () => {
       vi.restoreAllMocks();
     });
 
-    it('removes 14 files from both directories', async () => {
+    it('removes 15 files from both directories', async () => {
       vi.resetModules();
       const { installSlashCommands, uninstallSlashCommands } = await import('../../src/cli/install-commands.js');
 
@@ -94,7 +94,7 @@ describe('install-commands', () => {
       const commandsDir = join(tempHome, '.claude', 'commands');
       const skillsDir = join(tempHome, '.claude', 'skills');
       let cmdFiles = await readdir(commandsDir);
-      expect(cmdFiles.filter(f => f.startsWith('branchos:'))).toHaveLength(14);
+      expect(cmdFiles.filter(f => f.startsWith('branchos:'))).toHaveLength(15);
 
       // Uninstall
       uninstallSlashCommands();

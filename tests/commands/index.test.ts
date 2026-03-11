@@ -19,12 +19,13 @@ const EXPECTED_FILES = [
   'branchos:list-workstreams.md',
   'branchos:status.md',
   'branchos:archive.md',
+  'branchos:research.md',
 ];
 
 describe('slash command .md files', () => {
-  it('has 14 .md files in commands/ directory', () => {
+  it('has 15 .md files in commands/ directory', () => {
     const files = fs.readdirSync(COMMANDS_DIR).filter((f) => f.endsWith('.md'));
-    expect(files).toHaveLength(14);
+    expect(files).toHaveLength(15);
   });
 
   it.each(EXPECTED_FILES)('%s exists', (filename) => {

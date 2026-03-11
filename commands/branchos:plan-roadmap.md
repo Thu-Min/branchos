@@ -11,6 +11,8 @@ Generate a roadmap with milestones and feature files from the ingested PR-FAQ.
 
 Read `.branchos/shared/PR-FAQ.md`. If it does not exist, tell the user to run `/branchos:ingest-prfaq` first.
 
+**Research context:** If research artifacts exist in `.branchos/shared/research/`, read their `## Summary` sections to inform milestone and feature decisions. Use `ls .branchos/shared/research/R-*.md` to check, then read summaries from matching files.
+
 ## Step 2: Infer milestones and features
 
 Analyze the PR-FAQ content and create a structured roadmap:

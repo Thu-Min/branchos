@@ -32,6 +32,7 @@ If it does, warn: "A discuss.md already exists for phase <n>. Overwrite? (Procee
 - Read the codebase map from `.branchos/shared/codebase/` (ARCHITECTURE.md, MODULES.md, etc.) for architecture context.
 - Read any existing decisions from `.branchos/workstreams/<id>/decisions.md`.
 - Read previous phase artifacts if they exist (to understand progression).
+- Research summaries from `.branchos/shared/research/` are automatically included in the context packet when research artifacts exist (via `/context` assembly). No manual reading needed.
 
 ## Step 4: Generate discuss.md
 

@@ -23,3 +23,5 @@ export const RUNTIME_DIR = '.branchos-runtime';
 export const PHASES_DIR = 'phases';
 
 export const DECISIONS_FILE = 'decisions.md';
+
+export const RESEARCH_DIR = 'research';

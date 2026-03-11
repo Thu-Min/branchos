@@ -1,6 +1,6 @@
 import type { FeatureFrontmatter, FeatureStatus } from './types.js';
 
-const FIELD_ORDER: (keyof FeatureFrontmatter)[] = [
+const FEATURE_FIELD_ORDER: (keyof FeatureFrontmatter)[] = [
   'id',
   'title',
   'status',
@@ -11,11 +11,11 @@ const FIELD_ORDER: (keyof FeatureFrontmatter)[] = [
 ];
 
 /**
- * Parse YAML frontmatter delimited by `---` lines.
+ * Split frontmatter delimited by `---` lines into raw key-value pairs and body.
  * Splits on the first `:` only so colons in values are preserved.
  */
-export function parseFrontmatter(content: string): {
-  data: FeatureFrontmatter;
+function splitFrontmatter(content: string): {
+  rawFields: Map<string, string>;
   body: string;
 } {
   const lines = content.split('\n');
@@ -29,14 +29,14 @@ export function parseFrontmatter(content: string): {
   }
 
   const frontmatterLines = lines.slice(firstDelim + 1, secondDelim);
-  const data: Record<string, unknown> = {};
+  const rawFields = new Map<string, string>();
 
   for (const line of frontmatterLines) {
     const colonIdx = line.indexOf(':');
     if (colonIdx === -1) continue;
     const key = line.slice(0, colonIdx).trim();
     const rawValue = line.slice(colonIdx + 1).trim();
-    data[key] = parseValue(key, rawValue);
+    rawFields.set(key, rawValue);
   }
 
   const body = lines
@@ -44,10 +44,50 @@ export function parseFrontmatter(content: string): {
     .join('\n')
     .trim();
 
-  return { data: data as FeatureFrontmatter, body };
+  return { rawFields, body };
 }
 
-function parseValue(key: string, raw: string): string | number | null | FeatureStatus {
+// ── Generic frontmatter functions ──────────────────────────────────────────
+
+/**
+ * Parse YAML frontmatter with a custom field parser.
+ * The fieldParser receives each (key, rawValue) pair and returns the parsed value.
+ */
+export function parseGenericFrontmatter<T extends Record<string, unknown>>(
+  content: string,
+  fieldParser: (key: string, raw: string) => unknown,
+): { data: T; body: string } {
+  const { rawFields, body } = splitFrontmatter(content);
+  const data: Record<string, unknown> = {};
+
+  for (const [key, raw] of rawFields) {
+    data[key] = fieldParser(key, raw);
+  }
+
+  return { data: data as T, body };
+}
+
+/**
+ * Stringify a frontmatter object with a custom field stringifier.
+ * Fields are written in the specified order.
+ */
+export function stringifyGenericFrontmatter<T extends Record<string, unknown>>(
+  data: T,
+  fieldOrder: readonly (keyof T & string)[],
+  fieldStringifier: (key: string, value: unknown) => string,
+): string {
+  const lines = ['---'];
+  for (const key of fieldOrder) {
+    const value = data[key];
+    lines.push(`${key}: ${fieldStringifier(key, value)}`);
+  }
+  lines.push('---');
+  return lines.join('\n');
+}
+
+// ── Feature-specific wrappers (backward compatible) ────────────────────────
+
+function parseFeatureValue(key: string, raw: string): string | number | null | FeatureStatus {
   if (raw === 'null') return null;
   if (key === 'issue') {
     const num = Number(raw);
@@ -56,16 +96,25 @@ function parseValue(key: string, raw: string): string | number | null | FeatureS
   return raw;
 }
 
+function stringifyFeatureValue(_key: string, value: unknown): string {
+  return value === null || value === undefined ? 'null' : String(value);
+}
+
+/**
+ * Parse YAML frontmatter delimited by `---` lines.
+ * Splits on the first `:` only so colons in values are preserved.
+ */
+export function parseFrontmatter(content: string): {
+  data: FeatureFrontmatter;
+  body: string;
+} {
+  return parseGenericFrontmatter<FeatureFrontmatter>(content, parseFeatureValue);
+}
+
 /**
  * Stringify a FeatureFrontmatter object to a YAML frontmatter block.
  * Fields are written in a fixed order.
  */
 export function stringifyFrontmatter(data: FeatureFrontmatter): string {
-  const lines = ['---'];
-  for (const key of FIELD_ORDER) {
-    const value = data[key];
-    lines.push(`${key}: ${value === null || value === undefined ? 'null' : value}`);
-  }
-  lines.push('---');
-  return lines.join('\n');
+  return stringifyGenericFrontmatter(data, FEATURE_FIELD_ORDER, stringifyFeatureValue);
 }

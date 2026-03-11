@@ -66,11 +66,10 @@ Plans:
   3. Users can provide freeform follow-up responses when structured options are insufficient
   4. `/branchos:research --save` compiles conversation findings into a persistent research artifact and commits to git
   5. The interactive flow adapts its questioning based on user responses rather than following a rigid script
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
+- [ ] 12-01-PLAN.md — Research slash command with bookend pattern, AskUserQuestion integration, and --save persistence
 
 ### Phase 13: Context Assembly Integration
 **Goal**: Research findings automatically enrich discuss and plan workflows without manual reference
@@ -117,7 +116,7 @@ Phases execute in numeric order: 11 -> 12 -> 13 -> 14
 | 8. Feature-Aware Workstreams | v2.0 | 2/2 | Complete | 2026-03-10 |
 | 9. GitHub Issues Sync and Refresh | v2.0 | 3/3 | Complete | 2026-03-10 |
 | 10. Slash Command Migration | v2.0 | 2/2 | Complete | 2026-03-10 |
-| 11. Research Storage Foundation | 2/2 | Complete    | 2026-03-11 | - |
-| 12. Interactive Research Command | v2.1 | 0/2 | Not started | - |
+| 11. Research Storage Foundation | v2.1 | 2/2 | Complete | 2026-03-11 |
+| 12. Interactive Research Command | v2.1 | 0/1 | Not started | - |
 | 13. Context Assembly Integration | v2.1 | 0/2 | Not started | - |
 | 14. Discuss Project Command | v2.1 | 0/1 | Not started | - |

@@ -23,9 +23,9 @@ Requirements for v2.1 Interactive Research milestone. Each maps to roadmap phase
 
 ### Interactive Flow
 
-- [ ] **INT-01**: Slash commands use AskUserQuestion for structured decision points (options, multi-select)
-- [ ] **INT-02**: Slash commands support freeform follow-up when user selects "Other" or wants to explain
-- [ ] **INT-03**: Interactive flow guides users through research/discuss with adaptive questioning (not rigid scripts)
+- [x] **INT-01**: Slash commands use AskUserQuestion for structured decision points (options, multi-select)
+- [x] **INT-02**: Slash commands support freeform follow-up when user selects "Other" or wants to explain
+- [x] **INT-03**: Interactive flow guides users through research/discuss with adaptive questioning (not rigid scripts)
 
 ### Discuss Project
 
@@ -72,9 +72,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTX-01 | Phase 13 | Pending |
 | CTX-02 | Phase 13 | Pending |
 | CTX-03 | Phase 13 | Pending |
-| INT-01 | Phase 12 | Pending |
-| INT-02 | Phase 12 | Pending |
-| INT-03 | Phase 12 | Pending |
+| INT-01 | Phase 12 | Complete |
+| INT-02 | Phase 12 | Complete |
+| INT-03 | Phase 12 | Complete |
 | DISC-01 | Phase 14 | Pending |
 | DISC-02 | Phase 14 | Pending |
 | DISC-03 | Phase 14 | Pending |

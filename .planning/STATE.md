@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Interactive Research
-status: completed
-stopped_at: Completed 11-02-PLAN.md (Phase 11 complete)
-last_updated: "2026-03-11T04:22:00.442Z"
-last_activity: 2026-03-11 -- Completed 11-02 (research file store, index system, feature lookup)
+status: in-progress
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-11T04:48:00Z"
+last_activity: 2026-03-11 -- Completed 12-01 (interactive research slash command)
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Multiple developers can run structured AI-assisted workflows in the same repository without corrupting each other's planning state.
-**Current focus:** Phase 11 - Research Storage Foundation
+**Current focus:** Phase 12 - Interactive Research Command (PHASE COMPLETE)
 
 ## Current Position
 
-Phase: 11 (1 of 4 in v2.1) (Research Storage Foundation)
-Plan: 2 of 2 in current phase (PHASE COMPLETE)
-Status: Phase 11 Complete
-Last activity: 2026-03-11 -- Completed 11-02 (research file store, index system, feature lookup)
+Phase: 12 (2 of 4 in v2.1) (Interactive Research Command)
+Plan: 1 of 1 in current phase (PHASE COMPLETE)
+Status: Phase 12 Complete
+Last activity: 2026-03-11 -- Completed 12-01 (interactive research slash command)
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2 (v2.1)
+- Total plans completed: 3 (v2.1)
 - Average duration: 4min
-- Total execution time: 8min
+- Total execution time: 11min
 
 **By Phase:**
 
@@ -45,9 +45,10 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | Phase 11 P01 | 4min | 2 tasks | 6 files |
 | Phase 11 P02 | 4min | 2 tasks | 4 files |
+| Phase 12 P01 | 3min | 2 tasks | 6 files |
 
 **Recent Trend:**
-- Last 5 plans: 4min, 4min
+- Last 5 plans: 4min, 4min, 3min
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 - [Phase 11]: Used generic functions with field parser callbacks for frontmatter generalization -- minimal code churn
 - [Phase 11]: writeResearchFile auto-calls rebuildIndex after every write for guaranteed index consistency
 - [Phase 11]: nextResearchId uses max existing numeric ID (not count) to handle gaps correctly
+- [Phase 12]: Research command uses natural language guidelines, not pseudocode -- Claude's adaptiveness is the engine
+- [Phase 12]: AskUserQuestion with numbered options + freeform Other for every decision point
 
 ### Pending Todos
 
@@ -76,6 +79,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T04:17:22Z
-Stopped at: Completed 11-02-PLAN.md (Phase 11 complete)
+Last session: 2026-03-11T04:44:47Z
+Stopped at: Completed 12-01-PLAN.md (Phase 12 complete)
 Resume file: None

@@ -36,6 +36,7 @@ function makeInput(overrides: Partial<AssemblyInput> = {}): AssemblyInput {
     branchDiffNameStatus: 'M\tsrc/foo.ts\nA\tsrc/bar.ts',
     branchDiffStat: ' src/foo.ts | 10 +++++-----\n src/bar.ts |  5 +++++\n 2 files changed, 10 insertions(+), 5 deletions(-)',
     featureContext: null,
+    researchSummaries: null,
     ...overrides,
   };
 }
@@ -321,6 +322,99 @@ describe('assembleContext', () => {
       const result = assembleContext(input);
 
       // Should have exactly the same sections as before: architecture, conventions, decisions, branchDiff
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).toEqual(['Architecture', 'Conventions', 'Decisions', 'Branch Diff']);
+    });
+  });
+
+  describe('researchSummaries', () => {
+    it('produces NO Research section when researchSummaries is null', () => {
+      const input = makeInput({ detectedStep: 'discuss', researchSummaries: null });
+      const result = assembleContext(input);
+
+      expect(result.raw).not.toContain('## Research');
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).not.toContain('Research');
+    });
+
+    it('produces Research section when researchSummaries is provided and step is discuss', () => {
+      const input = makeInput({
+        detectedStep: 'discuss',
+        researchSummaries: '## Topic A\nFindings about topic A',
+      });
+      const result = assembleContext(input);
+
+      expect(result.raw).toContain('## Research');
+      expect(result.raw).toContain('Findings about topic A');
+    });
+
+    it('produces Research section when researchSummaries is provided and step is plan', () => {
+      const input = makeInput({
+        detectedStep: 'plan',
+        researchSummaries: '## Topic B\nFindings about topic B',
+      });
+      const result = assembleContext(input);
+
+      expect(result.raw).toContain('## Research');
+      expect(result.raw).toContain('Findings about topic B');
+    });
+
+    it('does NOT produce Research section when step is execute', () => {
+      const input = makeInput({
+        detectedStep: 'execute',
+        researchSummaries: '## Topic C\nFindings about topic C',
+      });
+      const result = assembleContext(input);
+
+      expect(result.raw).not.toContain('## Research');
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).not.toContain('Research');
+    });
+
+    it('does NOT produce Research section when step is fallback', () => {
+      const input = makeInput({
+        detectedStep: 'fallback',
+        researchSummaries: '## Topic D\nFindings about topic D',
+      });
+      const result = assembleContext(input);
+
+      expect(result.raw).not.toContain('## Research');
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).not.toContain('Research');
+    });
+
+    it('Research section appears AFTER featureContext and BEFORE architecture in discuss step', () => {
+      const input = makeInput({
+        detectedStep: 'discuss',
+        featureContext: 'Feature body content',
+        researchSummaries: 'Research findings',
+      });
+      const result = assembleContext(input);
+
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames[0]).toBe('Feature Context');
+      expect(sectionNames[1]).toBe('Research');
+      expect(sectionNames[2]).toBe('Architecture');
+    });
+
+    it('Research section appears AFTER featureContext and BEFORE discuss in plan step', () => {
+      const input = makeInput({
+        detectedStep: 'plan',
+        featureContext: 'Feature body content',
+        researchSummaries: 'Research findings',
+      });
+      const result = assembleContext(input);
+
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames[0]).toBe('Feature Context');
+      expect(sectionNames[1]).toBe('Research');
+      expect(sectionNames[2]).toBe('Discussion');
+    });
+
+    it('non-research workstreams produce identical output (null researchSummaries skipped)', () => {
+      const input = makeInput({ detectedStep: 'discuss', featureContext: null, researchSummaries: null });
+      const result = assembleContext(input);
+
       const sectionNames = result.sections.map((s) => s.name);
       expect(sectionNames).toEqual(['Architecture', 'Conventions', 'Decisions', 'Branch Diff']);
     });

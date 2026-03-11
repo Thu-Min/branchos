@@ -34,7 +34,7 @@
 
 **Milestone Goal:** Add interactive, conversational research capabilities to BranchOS slash commands so developers get back-and-forth domain research integrated into their workflow.
 
-- [ ] **Phase 11: Research Storage Foundation** - Types, store, and persistent research artifacts with structured frontmatter and summary separation
+- [x] **Phase 11: Research Storage Foundation** - Types, store, and persistent research artifacts with structured frontmatter and summary separation (completed 2026-03-11)
 - [ ] **Phase 12: Interactive Research Command** - Slash command with bookend pattern, interactive questioning, and conversational research flow
 - [ ] **Phase 13: Context Assembly Integration** - Research findings flow into discuss/plan context packets with summary-based inclusion
 - [ ] **Phase 14: Discuss Project Command** - Interactive guided conversation that produces structured PR-FAQ committed to git
@@ -117,7 +117,7 @@ Phases execute in numeric order: 11 -> 12 -> 13 -> 14
 | 8. Feature-Aware Workstreams | v2.0 | 2/2 | Complete | 2026-03-10 |
 | 9. GitHub Issues Sync and Refresh | v2.0 | 3/3 | Complete | 2026-03-10 |
 | 10. Slash Command Migration | v2.0 | 2/2 | Complete | 2026-03-10 |
-| 11. Research Storage Foundation | 1/2 | In Progress|  | - |
+| 11. Research Storage Foundation | 2/2 | Complete   | 2026-03-11 | - |
 | 12. Interactive Research Command | v2.1 | 0/2 | Not started | - |
 | 13. Context Assembly Integration | v2.1 | 0/2 | Not started | - |
 | 14. Discuss Project Command | v2.1 | 0/1 | Not started | - |

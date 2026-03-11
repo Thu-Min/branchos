@@ -39,7 +39,14 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 
 ### Active
 
-(None — planning next milestone)
+## Current Milestone: v2.1 Interactive Research
+
+**Goal:** Add interactive, conversational research capabilities to BranchOS slash commands so developers get back-and-forth domain research integrated into their workflow.
+
+**Target features:**
+- Interactive research slash command with conversational flow
+- Domain research before planning (integrated into slash command workflow)
+- Research artifacts stored and tracked in BranchOS state
 
 ### Out of Scope
 
@@ -121,4 +128,4 @@ When Claude Code runs a slash command, BranchOS assembles context from:
 | Soft delete for dropped features | Files kept with status=dropped; preserves history | ✓ Good |
 
 ---
-*Last updated: 2026-03-10 after v2.0 milestone completed*
+*Last updated: 2026-03-11 after v2.1 milestone started*

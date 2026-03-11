@@ -1,32 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Project-Level Planning
-status: completed
-stopped_at: Milestone v2.0 archived
-last_updated: "2026-03-10T11:30:00Z"
-last_activity: 2026-03-10 -- Milestone v2.0 archived
+milestone: v2.1
+milestone_name: Interactive Research
+status: active
+stopped_at: null
+last_updated: "2026-03-11T00:00:00Z"
+last_activity: 2026-03-11 -- Milestone v2.1 started
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-10)
+See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Multiple developers can run structured AI-assisted workflows in the same repository without corrupting each other's planning state.
-**Current focus:** Planning next milestone
+**Current focus:** Milestone v2.1 — Interactive Research
 
 ## Current Position
 
-Milestone v2.0 complete. All phases shipped.
-Next step: `/gsd:new-milestone` to start v2.1.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-11 — Milestone v2.1 started
 
 ## Accumulated Context
 
@@ -41,9 +43,3 @@ None.
 ### Blockers/Concerns
 
 - v1.0 tech debt: TypeScript error in simpleGit() TS2349 (runtime works, tsc fails)
-
-## Session Continuity
-
-Last session: 2026-03-10
-Stopped at: Milestone v2.0 archived
-Resume: Start `/gsd:new-milestone` for v2.1 (interactive research for slash commands)

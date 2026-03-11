@@ -185,6 +185,7 @@ export async function contextHandler(
     branchDiffNameStatus,
     branchDiffStat,
     featureContext,
+    researchSummaries: null,
   };
 
   const packet = assembleContext(input);

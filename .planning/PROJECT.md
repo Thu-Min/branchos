@@ -37,16 +37,24 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 - ✓ All CLI workflow commands migrated to `/branchos:*` slash commands — v2.0
 - ✓ CLI reduced to bootstrapper (init, install-commands) — v2.0
 
+- ✓ Research findings persisted as structured markdown with YAML frontmatter in `.branchos/shared/research/` — v2.1
+- ✓ Research artifacts linkable to features via `researchRefs` — v2.1
+- ✓ Research artifacts include summary section for downstream consumption — v2.1
+- ✓ Research findings flow into discuss/plan context packets automatically — v2.1
+- ✓ Context assembly uses summaries (not full artifacts) to manage context window — v2.1
+- ✓ Backward compatible — commands work unchanged when no research exists — v2.1
+- ✓ Slash commands use AskUserQuestion for structured decision points — v2.1
+- ✓ Slash commands support freeform follow-up via "Other" option — v2.1
+- ✓ Interactive flow guides with adaptive questioning, not rigid scripts — v2.1
+- ✓ `/branchos:discuss-project` creates PR-FAQ through interactive guided conversation — v2.1
+- ✓ Bookend pattern for slash command discussion flow — v2.1
+- ✓ PR-FAQ output committed to git and ingestible by existing pipeline — v2.1
+- ✓ Interactive research command (`/branchos:research`) with conversational flow and `--save` persistence — v2.1
+- ✓ Generalized frontmatter parser shared by features and research — v2.1
+
 ### Active
 
-## Current Milestone: v2.1 Interactive Research
-
-**Goal:** Add interactive, conversational research capabilities to BranchOS slash commands so developers get back-and-forth domain research integrated into their workflow.
-
-**Target features:**
-- Interactive research slash command with conversational flow
-- Domain research before planning (integrated into slash command workflow)
-- Research artifacts stored and tracked in BranchOS state
+(None — next milestone not yet planned)
 
 ### Out of Scope
 
@@ -65,10 +73,11 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 
 ## Context
 
-Shipped v2.0 with 10,870 LOC TypeScript.
+Shipped v2.1 with 12,149 LOC TypeScript.
 Tech stack: Node.js 20+, TypeScript, Commander, simple-git, tsup, vitest.
-46 requirements satisfied across 10 phases (v1.0 + v2.0).
-14 slash commands, CLI bootstrapper-only architecture.
+60 requirements satisfied across 14 phases (v1.0 + v2.0 + v2.1).
+16 slash commands, CLI bootstrapper-only architecture.
+522 tests across 47 test files.
 
 ### Two-Layer State Model
 
@@ -87,10 +96,11 @@ Tech stack: Node.js 20+, TypeScript, Commander, simple-git, tsup, vitest.
 When Claude Code runs a slash command, BranchOS assembles context from:
 1. Shared repo baseline
 2. Feature description and acceptance criteria (if linked)
-3. Current workstream metadata
-4. Current branch diff summary
-5. Current plan and execution state
-6. Relevant decisions only
+3. Research summaries (for discuss/plan steps, filtered by feature relevance)
+4. Current workstream metadata
+5. Current branch diff summary
+6. Current plan and execution state
+7. Relevant decisions only
 
 ## Constraints
 
@@ -126,6 +136,16 @@ When Claude Code runs a slash command, BranchOS assembles context from:
 | execFile over exec for gh CLI | Prevents shell injection via argument arrays | ✓ Good |
 | Title similarity matching for refresh | Greedy best-match with 0.6 threshold; simple, deterministic, no dependency | ✓ Good |
 | Soft delete for dropped features | Files kept with status=dropped; preserves history | ✓ Good |
+| Research in shared state (not workstream-scoped) | Research is domain knowledge, not task-specific; accessible to all workstreams | ✓ Good |
+| Summary separation in research storage | Prevents context bloat; summaries extracted independently from full findings | ✓ Good |
+| Zero new dependencies for research | Claude Code WebSearch/WebFetch are the research engine; no runtime deps added | ✓ Good |
+| Generic frontmatter parser with field callbacks | Minimal code churn; features and research share parse/stringify logic | ✓ Good |
+| writeResearchFile auto-calls rebuildIndex | Guaranteed index consistency; no stale index possible | ✓ Good |
+| Bookend pattern for interactive commands | Frames context at start, Claude drives middle, explicit save at end — consistent UX | ✓ Good |
+| AskUserQuestion with numbered options + Other | Structured decision points with freeform escape hatch at every step | ✓ Good |
+| Natural language guidelines over pseudocode | Claude's adaptiveness is the engine; rigid scripts would fight it | ✓ Good |
+| Grouped PR-FAQ sections in conversation flow | Natural conversation rhythm vs rigid sequential prompting | ✓ Good |
+| Research filtering by feature linkage | General artifacts always included; feature-specific filtered by workstream link | ✓ Good |
 
 ---
-*Last updated: 2026-03-11 after v2.1 milestone started*
+*Last updated: 2026-03-11 after v2.1 milestone completion*

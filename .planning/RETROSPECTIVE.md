@@ -48,6 +48,53 @@
 
 ---
 
+## Milestone: v2.1 — Interactive Research
+
+**Shipped:** 2026-03-11
+**Phases:** 4 | **Plans:** 6
+
+### What Was Built
+- Research storage foundation with structured markdown, YAML frontmatter, auto-rebuilding index, and feature linkage (40 tests)
+- Interactive research command (`/branchos:research`) with bookend pattern, AskUserQuestion, adaptive questioning, and `--save` persistence
+- Context assembly integration — research summaries automatically flow into discuss/plan context packets
+- Discuss-project command (`/branchos:discuss-project`) for guided PR-FAQ creation with ingest-prfaq delegation
+- Generalized frontmatter parser shared by features and research modules
+- 522 tests total across 47 test files
+
+### What Worked
+- Single-day execution for all 4 phases (14 requirements) — fastest milestone yet
+- Generalized frontmatter parser avoided duplicating parse/stringify logic across features and research
+- Bookend pattern proved reusable — applied consistently across research and discuss-project commands
+- Context assembly's null-skip pattern from v2.0 made adding researchSummaries nearly zero-friction
+- TDD red-green workflow continued to catch issues early (every plan started with failing tests)
+
+### What Was Inefficient
+- SUMMARY.md frontmatter still lacks `one_liner` field (same issue as v1.0) — caused null extraction during milestone completion
+- Nyquist validation again left in PARTIAL status across all 4 phases — pattern of skipping validation persists
+- `findResearchByFeature` was exported and tested but never used — context.ts implemented equivalent inline logic instead
+- No v2.0 retrospective was written — gap in the living document
+
+### Patterns Established
+- Bookend pattern for interactive slash commands (frame → Claude drives → explicit save)
+- AskUserQuestion with numbered options + freeform Other at every decision point
+- Natural language guidelines over pseudocode for Claude-driven interactive flows
+- Research in shared state (not workstream-scoped) for domain knowledge accessibility
+- Summary separation designed into storage for context window management
+
+### Key Lessons
+1. Bookend pattern is the right abstraction for interactive slash commands — reusable and consistent UX
+2. Generalized utilities (frontmatter parser) pay dividends immediately when a second consumer appears
+3. Auto-rebuild-on-write (index after file write) prevents an entire class of stale-state bugs
+4. Nyquist validation needs to be integrated into execution workflow, not left as optional post-step
+5. SUMMARY frontmatter schema should include `one_liner` — same gap hit twice now
+
+### Cost Observations
+- Model mix: 100% opus (quality profile throughout)
+- Sessions: ~6 (one per plan execution)
+- Notable: 3min average per plan — consistent with v1.0 velocity
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -55,13 +102,19 @@
 | Milestone | Sessions | Phases | Key Change |
 |-----------|----------|--------|------------|
 | v1.0 | ~13 | 5 | Initial release — established all patterns |
+| v2.1 | ~6 | 4 | Interactive commands — bookend pattern, AskUserQuestion |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Coverage | Tech Debt Items |
 |-----------|-------|----------|-----------------|
 | v1.0 | 219 | — | 6 |
+| v2.1 | 522 | — | 1 (orphaned export) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. (First milestone — lessons will be verified in future milestones)
+1. TDD red-green workflow catches bugs early and keeps quality high (v1.0, v2.1)
+2. Pure functions + thin I/O wrappers = fast tests and reliable behavior (v1.0, v2.1)
+3. Generalized utilities pay off immediately when second consumer appears (v2.1)
+4. SUMMARY frontmatter needs `one_liner` field — same gap in v1.0 and v2.1
+5. Nyquist validation skipped in both milestones — needs workflow integration, not manual discipline

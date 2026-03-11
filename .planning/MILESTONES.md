@@ -1,5 +1,24 @@
 # Milestones
 
+## v2.1 Interactive Research (Shipped: 2026-03-11)
+
+**Phases:** 4 (Phases 11-14) | **Plans:** 6 | **Requirements:** 14/14
+**Files changed:** 50 | **Lines:** +5,270 / -106 | **Codebase:** 12,149 LOC TypeScript
+**Timeline:** 1 day (2026-03-11)
+**Git range:** docs(11) → docs(phase-14)
+
+**Key accomplishments:**
+1. Research storage foundation with structured markdown artifacts, YAML frontmatter, auto-rebuilding index, and feature linkage
+2. Interactive research command (`/branchos:research`) with bookend pattern, AskUserQuestion decision points, adaptive questioning, and `--save` persistence
+3. Context assembly integration — research summaries automatically flow into discuss/plan context packets with backward compatibility
+4. Discuss-project command (`/branchos:discuss-project`) creates PR-FAQ through guided interactive conversation with ingest-prfaq delegation
+5. Generalized frontmatter parser shared by features and research modules
+6. Full TDD coverage — 522 tests passing across 47 test files
+
+**Archive:** `.planning/milestones/v2.1-ROADMAP.md`, `v2.1-REQUIREMENTS.md`
+
+---
+
 ## v2.0 Project-Level Planning (Shipped: 2026-03-10)
 
 **Phases:** 5 (Phases 6-10) | **Plans:** 12 | **Requirements:** 17/17

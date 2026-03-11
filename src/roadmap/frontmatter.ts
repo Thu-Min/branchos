@@ -108,7 +108,8 @@ export function parseFrontmatter(content: string): {
   data: FeatureFrontmatter;
   body: string;
 } {
-  return parseGenericFrontmatter<FeatureFrontmatter>(content, parseFeatureValue);
+  const result = parseGenericFrontmatter<Record<string, unknown>>(content, parseFeatureValue);
+  return { data: result.data as unknown as FeatureFrontmatter, body: result.body };
 }
 
 /**
@@ -116,5 +117,9 @@ export function parseFrontmatter(content: string): {
  * Fields are written in a fixed order.
  */
 export function stringifyFrontmatter(data: FeatureFrontmatter): string {
-  return stringifyGenericFrontmatter(data, FEATURE_FIELD_ORDER, stringifyFeatureValue);
+  return stringifyGenericFrontmatter(
+    data as unknown as Record<string, unknown>,
+    FEATURE_FIELD_ORDER as unknown as readonly string[],
+    stringifyFeatureValue,
+  );
 }

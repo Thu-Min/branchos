@@ -94,10 +94,10 @@ Plans:
   1. `/branchos:discuss-project` initiates a guided conversation that walks the developer through PR-FAQ sections
   2. The command uses the bookend pattern: frames the discussion at start, Claude Code drives conversation, explicit save at end
   3. The output is a structured PR-FAQ file committed to git that can be ingested by existing `/branchos:ingest-prfaq`
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 14-01: TBD
+- [ ] 14-01-PLAN.md — Discuss-project slash command with bookend pattern, section-guided PR-FAQ conversation, and ingest-prfaq delegation
 
 ## Progress
 

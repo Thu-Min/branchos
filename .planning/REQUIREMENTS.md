@@ -29,9 +29,9 @@ Requirements for v2.1 Interactive Research milestone. Each maps to roadmap phase
 
 ### Discuss Project
 
-- [ ] **DISC-01**: `/branchos:discuss-project` creates PR-FAQ through interactive guided conversation
-- [ ] **DISC-02**: Bookend pattern — slash command frames discussion, Claude Code drives conversation, explicit save
-- [ ] **DISC-03**: Output is structured PR-FAQ committed to git
+- [x] **DISC-01**: `/branchos:discuss-project` creates PR-FAQ through interactive guided conversation
+- [x] **DISC-02**: Bookend pattern — slash command frames discussion, Claude Code drives conversation, explicit save
+- [x] **DISC-03**: Output is structured PR-FAQ committed to git
 
 ## Future Requirements
 
@@ -75,9 +75,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INT-01 | Phase 12 | Complete |
 | INT-02 | Phase 12 | Complete |
 | INT-03 | Phase 12 | Complete |
-| DISC-01 | Phase 14 | Pending |
-| DISC-02 | Phase 14 | Pending |
-| DISC-03 | Phase 14 | Pending |
+| DISC-01 | Phase 14 | Complete |
+| DISC-02 | Phase 14 | Complete |
+| DISC-03 | Phase 14 | Complete |
 
 **Coverage:**
 - v2.1 requirements: 14 total

@@ -37,7 +37,7 @@
 - [x] **Phase 11: Research Storage Foundation** - Types, store, and persistent research artifacts with structured frontmatter and summary separation (completed 2026-03-11)
 - [x] **Phase 12: Interactive Research Command** - Slash command with bookend pattern, interactive questioning, and conversational research flow (completed 2026-03-11)
 - [x] **Phase 13: Context Assembly Integration** - Research findings flow into discuss/plan context packets with summary-based inclusion (completed 2026-03-11)
-- [ ] **Phase 14: Discuss Project Command** - Interactive guided conversation that produces structured PR-FAQ committed to git
+- [x] **Phase 14: Discuss Project Command** - Interactive guided conversation that produces structured PR-FAQ committed to git (completed 2026-03-11)
 
 ## Phase Details
 
@@ -119,4 +119,4 @@ Phases execute in numeric order: 11 -> 12 -> 13 -> 14
 | 11. Research Storage Foundation | v2.1 | 2/2 | Complete | 2026-03-11 |
 | 12. Interactive Research Command | v2.1 | Complete    | 2026-03-11 | 2026-03-11 |
 | 13. Context Assembly Integration | 2/2 | Complete    | 2026-03-11 | - |
-| 14. Discuss Project Command | v2.1 | 0/1 | Not started | - |
+| 14. Discuss Project Command | 1/1 | Complete   | 2026-03-11 | - |

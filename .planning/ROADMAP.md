@@ -50,11 +50,11 @@
   2. Each research artifact contains a `## Summary` section that can be extracted independently from the full findings
   3. Research artifacts can be linked to features via `researchRefs` and these links are retrievable from the store
   4. An `index.json` in the research directory provides fast lookup of all research topics without reading individual files
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: TBD
-- [ ] 11-02: TBD
+- [ ] 11-01-PLAN.md — Research types, generalized frontmatter parser, and extractSummary
+- [ ] 11-02-PLAN.md — Research file store (CRUD) and index system with feature lookup
 
 ### Phase 12: Interactive Research Command
 **Goal**: Developers can conduct interactive, conversational research sessions through a slash command

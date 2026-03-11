@@ -17,9 +17,9 @@ Requirements for v2.1 Interactive Research milestone. Each maps to roadmap phase
 
 ### Context Integration
 
-- [ ] **CTX-01**: Research findings flow into discuss/plan context packets automatically
-- [ ] **CTX-02**: Context assembly uses summaries (not full artifacts) to manage context window
-- [ ] **CTX-03**: Backward compatible — commands work unchanged when no research exists
+- [x] **CTX-01**: Research findings flow into discuss/plan context packets automatically
+- [x] **CTX-02**: Context assembly uses summaries (not full artifacts) to manage context window
+- [x] **CTX-03**: Backward compatible — commands work unchanged when no research exists
 
 ### Interactive Flow
 
@@ -69,9 +69,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-03 | Phase 11 | Complete |
 | RES-04 | Phase 11 | Complete |
 | RES-05 | Phase 11 | Complete |
-| CTX-01 | Phase 13 | Pending |
-| CTX-02 | Phase 13 | Pending |
-| CTX-03 | Phase 13 | Pending |
+| CTX-01 | Phase 13 | Complete |
+| CTX-02 | Phase 13 | Complete |
+| CTX-03 | Phase 13 | Complete |
 | INT-01 | Phase 12 | Complete |
 | INT-02 | Phase 12 | Complete |
 | INT-03 | Phase 12 | Complete |

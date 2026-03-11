@@ -122,9 +122,9 @@ describe('install-commands', () => {
       expect(commands).toContain('install-commands');
     });
 
-    it('has version "2.0.1"', async () => {
+    it('has version "2.1.1"', async () => {
       const { program } = await import('../../src/cli/index.js');
-      expect(program.version()).toBe('2.0.1');
+      expect(program.version()).toBe('2.1.1');
     });
 
     it('has "workstream" command', async () => {

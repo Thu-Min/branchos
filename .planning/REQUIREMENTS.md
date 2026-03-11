@@ -64,13 +64,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| RES-01 | Phase 13 | Pending |
+| RES-02 | Phase 13 | Pending |
+| RES-03 | Phase 11 | Pending |
+| RES-04 | Phase 11 | Pending |
+| RES-05 | Phase 11 | Pending |
+| CTX-01 | Phase 13 | Pending |
+| CTX-02 | Phase 13 | Pending |
+| CTX-03 | Phase 13 | Pending |
+| INT-01 | Phase 12 | Pending |
+| INT-02 | Phase 12 | Pending |
+| INT-03 | Phase 12 | Pending |
+| DISC-01 | Phase 14 | Pending |
+| DISC-02 | Phase 14 | Pending |
+| DISC-03 | Phase 14 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14 ⚠️
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-11*
-*Last updated: 2026-03-11 after initial definition*
+*Last updated: 2026-03-11 after roadmap creation*

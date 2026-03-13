@@ -54,14 +54,25 @@ Multiple developers can run structured AI-assisted workflows in the same reposit
 
 ### Active
 
-(None — next milestone not yet planned)
+- [ ] `/branchos:create-pr` slash command creates GitHub PR from workstream context — v2.2
+- [ ] PR body assembled from feature description, phase summaries, acceptance criteria, and linked issue — v2.2
+- [ ] PR auto-assigned to developer who created the workstream — v2.2
+- [ ] Acceptance criteria in feature files use Given/When/Then (Gherkin) format — v2.2
+- [ ] Context packets include structured Given/When/Then acceptance criteria — v2.2
+- [ ] `create-workstream --issue #N` pulls issue title/description and links to feature if sync-issues created it — v2.2
+- [ ] Automatic GitHub username capture on `create-workstream` stored in workstream metadata — v2.2
+- [ ] `sync-issues` sets assignee on GitHub Issues from workstream assignee metadata — v2.2
+
+## Current Milestone: v2.2 PR Workflow & Developer Experience
+
+**Goal:** Streamline the PR-to-merge lifecycle with auto-PR creation, structured acceptance criteria, issue-linked workstreams, and automatic assignee tracking.
 
 ### Out of Scope
 
 - Web dashboard — terminal-first, no UI beyond CLI
 - Multi-repo orchestration — single repo focus
 - Autonomous multi-agent swarm — tool assists developers, doesn't replace them
-- PR automation — no auto-PR creation
+- ~~PR automation — no auto-PR creation~~ → moved to Active for v2.2
 - Real-time collaboration server — async, file-based coordination
 - Module-level conflict detection — file-level only (proven sufficient in v1.0)
 - GSD command compatibility — own namespace (`branchos` not `/gsd`)
@@ -148,4 +159,4 @@ When Claude Code runs a slash command, BranchOS assembles context from:
 | Research filtering by feature linkage | General artifacts always included; feature-specific filtered by workstream link | ✓ Good |
 
 ---
-*Last updated: 2026-03-11 after v2.1 milestone completion*
+*Last updated: 2026-03-13 after v2.2 milestone start*

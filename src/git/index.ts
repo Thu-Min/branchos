@@ -117,6 +117,19 @@ export class GitOps {
     }
   }
 
+  async getCommitsAhead(baseBranch: string): Promise<number> {
+    try {
+      const result = await this.git.raw(['rev-list', '--count', baseBranch + '..HEAD']);
+      return parseInt(result.trim(), 10);
+    } catch {
+      return -1;
+    }
+  }
+
+  async push(remote: string = 'origin'): Promise<void> {
+    await this.git.raw(['push', '-u', remote, 'HEAD']);
+  }
+
   async hasChanges(files: string[]): Promise<boolean> {
     const status = await this.git.status();
     const allChanged = [

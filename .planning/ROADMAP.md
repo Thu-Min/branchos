@@ -46,7 +46,7 @@
 **Milestone Goal:** Streamline the PR-to-merge lifecycle with auto-PR creation, structured acceptance criteria, issue-linked workstreams, and automatic assignee tracking.
 
 - [x] **Phase 15: GWT Acceptance Criteria** - Feature files support Given/When/Then format with backward-compatible freeform fallback (completed 2026-03-13)
-- [ ] **Phase 16: Assignee Capture & Schema Migration** - Automatic GitHub username capture on workstream creation with schema v3 migration
+- [x] **Phase 16: Assignee Capture & Schema Migration** - Automatic GitHub username capture on workstream creation with schema v3 migration (completed 2026-03-13)
 - [ ] **Phase 17: Issue-Linked Workstreams** - Create workstreams from GitHub issues with auto-feature linking
 - [ ] **Phase 18: Create-PR Command & Assignee Sync** - One-command PR creation from workstream artifacts with assignee propagation
 
@@ -132,7 +132,7 @@ Plans:
 | 13. Context Assembly Integration | v2.1 | 2/2 | Complete | 2026-03-11 |
 | 14. Discuss Project Command | v2.1 | 1/1 | Complete | 2026-03-11 |
 | 15. GWT Acceptance Criteria | 2/2 | Complete    | 2026-03-13 | - |
-| 16. Assignee Capture & Schema Migration | v2.2 | 0/1 | Not started | - |
+| 16. Assignee Capture & Schema Migration | 1/1 | Complete   | 2026-03-13 | - |
 | 17. Issue-Linked Workstreams | v2.2 | 0/1 | Not started | - |
 | 18. Create-PR Command & Assignee Sync | v2.2 | 0/2 | Not started | - |
 

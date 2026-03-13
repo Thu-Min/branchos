@@ -37,11 +37,11 @@ Requirements for PR Workflow & Developer Experience milestone. Each maps to road
 
 ### Assignee Tracking
 
-- [ ] **ASN-01**: GitHub username auto-captured via `gh api /user` on workstream creation
-- [ ] **ASN-02**: Username stored in workstream meta.json as `assignee` field
+- [x] **ASN-01**: GitHub username auto-captured via `gh api /user` on workstream creation
+- [x] **ASN-02**: Username stored in workstream meta.json as `assignee` field
 - [ ] **ASN-03**: `sync-issues` sets assignee on GitHub Issues from workstream assignee
-- [ ] **ASN-04**: Assignee capture is non-blocking — graceful fallback if `gh` unavailable
-- [ ] **ASN-05**: Schema migration v2→v3 for new meta.json fields (assignee, issueNumber)
+- [x] **ASN-04**: Assignee capture is non-blocking — graceful fallback if `gh` unavailable
+- [x] **ASN-05**: Schema migration v2→v3 for new meta.json fields (assignee, issueNumber)
 
 ## Future Requirements
 
@@ -80,11 +80,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | AC-03 | Phase 15 | Complete |
 | AC-04 | Phase 15 | Complete |
 | AC-05 | Phase 15 | Complete |
-| ASN-01 | Phase 16 | Pending |
-| ASN-02 | Phase 16 | Pending |
+| ASN-01 | Phase 16 | Complete |
+| ASN-02 | Phase 16 | Complete |
 | ASN-03 | Phase 18 | Pending |
-| ASN-04 | Phase 16 | Pending |
-| ASN-05 | Phase 16 | Pending |
+| ASN-04 | Phase 16 | Complete |
+| ASN-05 | Phase 16 | Complete |
 | ISS-01 | Phase 17 | Pending |
 | ISS-02 | Phase 17 | Pending |
 | ISS-03 | Phase 17 | Pending |

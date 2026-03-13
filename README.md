@@ -12,6 +12,8 @@ BranchOS isolates planning and execution state **per Git branch** while maintain
 
 **v2** adds a **project-level planning layer**: ingest an Amazon-style PR-FAQ, generate a roadmap with milestones and features, sync to GitHub Issues, and create feature-aware workstreams — all through Claude Code slash commands.
 
+**v2.2** closes the developer loop with **PR workflow automation**: structured Given/When/Then acceptance criteria, automatic developer identity capture, issue-linked workstream creation, and one-command PR generation with full context.
+
 ## Installation
 
 ```bash
@@ -63,7 +65,7 @@ In Claude Code:
 /branchos:create-workstream
 ```
 
-BranchOS auto-derives the workstream ID from the branch name (`feature/add-auth` → `add-auth`). You can link to a feature with `--feature <id>` or `--issue #N`.
+BranchOS auto-derives the workstream ID from the branch name (`feature/add-auth` → `add-auth`). You can link to a feature with `--feature <id>` or a GitHub Issue with `--issue #N` (auto-matches the issue to a feature).
 
 ### 5. Run the three-phase workflow
 
@@ -152,6 +154,12 @@ branchos detect-conflicts
 | `/branchos:plan-phase` | Create implementation plan for current workstream phase |
 | `/branchos:execute-phase` | Update execution state for current workstream phase |
 
+### PR Workflow
+
+| Command | Description |
+|---------|-------------|
+| `/branchos:create-pr` | Create a GitHub PR from workstream context with acceptance criteria |
+
 ### Codebase & Status
 
 | Command | Description |
@@ -166,6 +174,7 @@ branchos detect-conflicts
 - [CLI Reference](docs/cli-reference.md) - All terminal commands in detail
 - [Phase Workflow](docs/phase-workflow.md) - The Discuss → Plan → Execute cycle
 - [Slash Commands](docs/slash-commands.md) - Claude Code integration
+- [PR Workflow](docs/pr-workflow.md) - Issue linking, acceptance criteria, and PR creation
 - [Conflict Detection](docs/conflict-detection.md) - Cross-workstream conflict analysis
 - [Configuration](docs/configuration.md) - Config options and directory structure
 

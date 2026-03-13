@@ -130,5 +130,6 @@ BranchOS automatically migrates state files when the schema version changes:
 |---------|---------|
 | 0 → 1 | Added `schemaVersion` field |
 | 1 → 2 | Added `currentPhase` and `phases` array |
+| 2 → 3 | Added `assignee` and `issueNumber` fields |
 
 Migrations run automatically when reading state files, so upgrading BranchOS is safe without manual intervention.

@@ -40,7 +40,7 @@ This creates the `.branchos/` directory structure:
 └── workstreams/             # Per-branch workstream state
 ```
 
-It also adds `.branchos-runtime/` to your `.gitignore`, auto-commits the initialization, and installs all 14 slash commands into Claude Code.
+It also adds `.branchos-runtime/` to your `.gitignore`, auto-commits the initialization, and installs all 16 slash commands into Claude Code.
 
 ## Step 2: Generate the Codebase Map
 
@@ -158,9 +158,20 @@ branchos check-drift
 branchos detect-conflicts
 ```
 
+## Step 7: Create a PR
+
+When your work is done, generate a PR with full context:
+
+```
+/branchos:create-pr
+```
+
+This assembles a PR body from your workstream context — including feature description, GWT-formatted acceptance criteria, and phase summaries — assigns you as the author, and creates the PR via `gh`.
+
 ## Next Steps
 
 - Read the [CLI Reference](./cli-reference.md) for all available commands
 - Learn about the [Phase Workflow](./phase-workflow.md) in detail
+- Understand the [PR Workflow](./pr-workflow.md) — issue linking, acceptance criteria, and PR creation
 - Understand [Conflict Detection](./conflict-detection.md)
 - See [Configuration](./configuration.md) options

@@ -14,7 +14,7 @@ branchos init
 - Creates `.branchos/` directory with `shared/`, `workstreams/`, and `config.json`
 - Adds `.branchos-runtime/` to `.gitignore`
 - Auto-commits the initialization
-- Auto-installs all 14 slash commands into Claude Code
+- Auto-installs all 16 slash commands into Claude Code
 
 **Errors:**
 - Fails if the current directory is not a Git repository
@@ -35,7 +35,7 @@ branchos install-commands [--uninstall]
 | `--uninstall` | Remove previously installed slash commands |
 
 **What it does:**
-- Writes 14 `branchos:*.md` command files to both `~/.claude/commands/` and `~/.claude/skills/`
+- Writes 16 `branchos:*.md` command files to both `~/.claude/commands/` and `~/.claude/skills/`
 - Commands are bundled into the CLI at build time, so they always match the installed version
 - Restart Claude Code after install
 
@@ -118,3 +118,32 @@ branchos detect-conflicts [--all]
 **Severity levels:**
 - **High** - Both workstreams have already changed the same file
 - **Medium** - One workstream planned and the other changed (or both planned) the same file
+
+---
+
+## `branchos create-pr`
+
+Create a GitHub PR from workstream context with feature-linked metadata and acceptance criteria.
+
+```bash
+branchos create-pr [--json] [--dry-run] [--cwd <path>]
+```
+
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--json` | Output result as JSON |
+| `--dry-run` | Show what would be created without creating the PR |
+| `--cwd <path>` | Override working directory |
+
+**What it does:**
+- Resolves the current workstream and its linked feature
+- Parses GWT (Given/When/Then) acceptance criteria from the feature body
+- Assembles a PR body with feature description and formatted acceptance criteria checklist
+- Assigns the PR to the workstream developer (from workstream metadata)
+- Pushes the branch to remote if needed
+- Creates the PR via `gh pr create`
+
+**Requirements:**
+- `gh` CLI must be installed and authenticated
+- Workstream should be linked to a feature (via `--feature` or `--issue`)

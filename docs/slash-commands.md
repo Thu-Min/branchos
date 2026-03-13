@@ -1,6 +1,6 @@
 # Slash Commands
 
-BranchOS provides 14 slash commands for Claude Code that integrate AI-assisted workflows directly into your development environment.
+BranchOS provides 16 slash commands for Claude Code that integrate AI-assisted workflows directly into your development environment.
 
 ## Installation
 
@@ -218,7 +218,31 @@ List features from the feature registry or view details for a specific feature.
 
 ### `/branchos:sync-issues`
 
-Push feature definitions to GitHub Issues for team coordination and assignment.
+Push feature definitions to GitHub Issues for team coordination and assignment. Automatically propagates workstream assignees to their linked GitHub Issues.
+
+---
+
+### `/branchos:create-pr`
+
+Create a GitHub PR from workstream context.
+
+**Usage:**
+```
+/branchos:create-pr
+```
+
+**What it does:**
+1. Resolves the current workstream and its linked feature
+2. Parses acceptance criteria from the feature body (GWT format)
+3. Assembles a PR body with feature description and GWT-formatted checklist
+4. Determines assignee from workstream metadata
+5. Auto-pushes the branch to remote if needed
+6. Creates the PR via `gh pr create`
+7. Returns the PR URL
+
+**Requirements:**
+- `gh` CLI installed and authenticated
+- Workstream must be linked to a feature (via `--feature` or `--issue`)
 
 ---
 
@@ -248,4 +272,7 @@ A typical session using slash commands:
 # ... implement more changes ...
 
 /branchos:execute-phase 2
+
+# When done, create a PR with full context
+/branchos:create-pr
 ```

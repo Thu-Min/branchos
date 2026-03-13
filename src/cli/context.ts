@@ -17,6 +17,7 @@ import { error } from '../output/index.js';
 import { readMeta } from '../state/meta.js';
 import { readAllFeatures } from '../roadmap/feature-file.js';
 import type { Feature } from '../roadmap/types.js';
+import { parseAcceptanceCriteria, formatGwtChecklist } from '../roadmap/gwt-parser.js';
 import {
   BRANCHOS_DIR,
   SHARED_DIR,
@@ -45,7 +46,31 @@ function formatFeatureContext(feature: Feature): string {
     `| Branch | ${feature.branch} |`,
   ].join('\n');
 
-  return feature.body ? `${header}\n\n${feature.body}` : header;
+  if (!feature.body) {
+    return header;
+  }
+
+  // Split body at ## Acceptance Criteria heading
+  const acHeadingIndex = feature.body.indexOf('## Acceptance Criteria');
+  if (acHeadingIndex === -1) {
+    // No AC section — pass body through as-is (backward compatible)
+    return `${header}\n\n${feature.body}`;
+  }
+
+  // Extract description (text before ## Acceptance Criteria)
+  const description = feature.body.slice(0, acHeadingIndex).trim();
+
+  // Parse and format GWT acceptance criteria
+  const parsed = parseAcceptanceCriteria(feature.body);
+  const formattedAc = formatGwtChecklist(parsed);
+
+  const parts = [header];
+  if (description) {
+    parts.push(description);
+  }
+  parts.push(formattedAc);
+
+  return parts.join('\n\n');
 }
 
 async function readFileOrNull(filePath: string): Promise<string | null> {

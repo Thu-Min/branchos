@@ -75,36 +75,36 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AC-01 | — | Pending |
-| AC-02 | — | Pending |
-| AC-03 | — | Pending |
-| AC-04 | — | Pending |
-| AC-05 | — | Pending |
-| ASN-01 | — | Pending |
-| ASN-02 | — | Pending |
-| ASN-03 | — | Pending |
-| ASN-04 | — | Pending |
-| ASN-05 | — | Pending |
-| ISS-01 | — | Pending |
-| ISS-02 | — | Pending |
-| ISS-03 | — | Pending |
-| PR-01 | — | Pending |
-| PR-02 | — | Pending |
-| PR-03 | — | Pending |
-| PR-04 | — | Pending |
-| PR-05 | — | Pending |
-| PR-06 | — | Pending |
-| PR-07 | — | Pending |
-| PR-08 | — | Pending |
-| PR-09 | — | Pending |
-| PR-10 | — | Pending |
-| PR-11 | — | Pending |
+| AC-01 | Phase 15 | Pending |
+| AC-02 | Phase 15 | Pending |
+| AC-03 | Phase 15 | Pending |
+| AC-04 | Phase 15 | Pending |
+| AC-05 | Phase 15 | Pending |
+| ASN-01 | Phase 16 | Pending |
+| ASN-02 | Phase 16 | Pending |
+| ASN-03 | Phase 18 | Pending |
+| ASN-04 | Phase 16 | Pending |
+| ASN-05 | Phase 16 | Pending |
+| ISS-01 | Phase 17 | Pending |
+| ISS-02 | Phase 17 | Pending |
+| ISS-03 | Phase 17 | Pending |
+| PR-01 | Phase 18 | Pending |
+| PR-02 | Phase 18 | Pending |
+| PR-03 | Phase 18 | Pending |
+| PR-04 | Phase 18 | Pending |
+| PR-05 | Phase 18 | Pending |
+| PR-06 | Phase 18 | Pending |
+| PR-07 | Phase 18 | Pending |
+| PR-08 | Phase 18 | Pending |
+| PR-09 | Phase 18 | Pending |
+| PR-10 | Phase 18 | Pending |
+| PR-11 | Phase 18 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-13*
-*Last updated: 2026-03-13 after initial definition*
+*Last updated: 2026-03-13 -- traceability updated with phase mappings*

@@ -23,9 +23,9 @@ Requirements for PR Workflow & Developer Experience milestone. Each maps to road
 
 ### Acceptance Criteria
 
-- [ ] **AC-01**: Feature files support Given/When/Then acceptance criteria format
-- [ ] **AC-02**: GWT parser handles Given, When, Then, And keywords
-- [ ] **AC-03**: Backward compatible — freeform criteria still work when GWT not present
+- [x] **AC-01**: Feature files support Given/When/Then acceptance criteria format
+- [x] **AC-02**: GWT parser handles Given, When, Then, And keywords
+- [x] **AC-03**: Backward compatible — freeform criteria still work when GWT not present
 - [ ] **AC-04**: `plan-roadmap` generates GWT-formatted acceptance criteria for new features
 - [ ] **AC-05**: GWT criteria flow into context packets for discuss/plan/execute phases
 
@@ -75,9 +75,9 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AC-01 | Phase 15 | Pending |
-| AC-02 | Phase 15 | Pending |
-| AC-03 | Phase 15 | Pending |
+| AC-01 | Phase 15 | Complete |
+| AC-02 | Phase 15 | Complete |
+| AC-03 | Phase 15 | Complete |
 | AC-04 | Phase 15 | Pending |
 | AC-05 | Phase 15 | Pending |
 | ASN-01 | Phase 16 | Pending |

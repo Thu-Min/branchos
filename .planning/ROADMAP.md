@@ -131,7 +131,7 @@ Plans:
 | 12. Interactive Research Command | v2.1 | 1/1 | Complete | 2026-03-11 |
 | 13. Context Assembly Integration | v2.1 | 2/2 | Complete | 2026-03-11 |
 | 14. Discuss Project Command | v2.1 | 1/1 | Complete | 2026-03-11 |
-| 15. GWT Acceptance Criteria | v2.2 | 0/2 | Not started | - |
+| 15. GWT Acceptance Criteria | 1/2 | In Progress|  | - |
 | 16. Assignee Capture & Schema Migration | v2.2 | 0/1 | Not started | - |
 | 17. Issue-Linked Workstreams | v2.2 | 0/1 | Not started | - |
 | 18. Create-PR Command & Assignee Sync | v2.2 | 0/2 | Not started | - |

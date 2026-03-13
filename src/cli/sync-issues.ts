@@ -1,15 +1,16 @@
 import { Command } from 'commander';
 import { join } from 'path';
 import { GitOps } from '../git/index.js';
-import { BRANCHOS_DIR, SHARED_DIR } from '../constants.js';
-import { checkGhAvailable } from '../github/index.js';
+import { BRANCHOS_DIR, SHARED_DIR, WORKSTREAMS_DIR } from '../constants.js';
+import { checkGhAvailable, ghExec } from '../github/index.js';
 import { createIssue, updateIssue } from '../github/issues.js';
 import { ensureStatusLabels } from '../github/labels.js';
 import { ensureMilestone } from '../github/milestones.js';
 import { readAllFeatures, writeFeatureFile } from '../roadmap/feature-file.js';
+import { readMeta } from '../state/meta.js';
 import { success, error as errorOutput } from '../output/index.js';
 import type { Feature } from '../roadmap/types.js';
-import { access } from 'fs/promises';
+import { access, readdir } from 'fs/promises';
 
 export interface SyncIssuesOptions {
   json: boolean;
@@ -47,6 +48,33 @@ async function fileExists(path: string): Promise<boolean> {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function findAssigneeForFeature(repoRoot: string, featureId: string): Promise<string | null> {
+  const wsDir = join(repoRoot, BRANCHOS_DIR, WORKSTREAMS_DIR);
+  let entries: string[];
+  try {
+    entries = (await readdir(wsDir)) as string[];
+  } catch {
+    return null;
+  }
+
+  // Sort alphabetically for deterministic first-match
+  entries.sort();
+
+  for (const entry of entries) {
+    try {
+      const meta = await readMeta(join(wsDir, entry, 'meta.json'));
+      if (meta.featureId === featureId && meta.status === 'active' && meta.assignee) {
+        return meta.assignee;
+      }
+    } catch {
+      // Skip corrupted or missing meta files
+      continue;
+    }
+  }
+
+  return null;
 }
 
 export function buildIssueBody(feature: Feature, allFeatures: Feature[]): string {
@@ -229,6 +257,21 @@ export async function syncIssuesHandler(options: SyncIssuesOptions): Promise<Syn
         } catch (err: any) {
           warnings.push(`Failed to update issue for ${feature.id}: ${err.message}`);
           continue;
+        }
+      }
+    }
+
+    // Assignee sync: set assignee on GitHub Issue from workstream metadata
+    if (!options.dryRun) {
+      const issueNumber = feature.issue;
+      if (issueNumber) {
+        try {
+          const assignee = await findAssigneeForFeature(repoRoot, feature.id);
+          if (assignee) {
+            await ghExec(['issue', 'edit', String(issueNumber), '--add-assignee', assignee]);
+          }
+        } catch (err: any) {
+          warnings.push(`Failed to set assignee for ${feature.id}: ${err.message}`);
         }
       }
     }

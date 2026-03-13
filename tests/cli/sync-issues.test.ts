@@ -416,7 +416,7 @@ describe('assignee propagation in syncIssuesHandler', () => {
 
     const result = await syncIssuesHandler({ json: true, dryRun: false, force: false });
     expect(result.success).toBe(true);
-    expect(result.warnings).toContain(expect.stringContaining('Failed to set assignee'));
+    expect(result.warnings.some((w: string) => w.includes('Failed to set assignee'))).toBe(true);
   });
 
   it('skips assignee sync in dry-run mode', async () => {

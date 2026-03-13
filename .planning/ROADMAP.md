@@ -100,16 +100,16 @@ Plans:
 **Depends on**: Phase 15 (GWT for PR body), Phase 16 (assignee for PR assignment), Phase 17 (issue number for Closes #N)
 **Requirements**: PR-01, PR-02, PR-03, PR-04, PR-05, PR-06, PR-07, PR-08, PR-09, PR-10, PR-11, ASN-03
 **Success Criteria** (what must be TRUE):
-  1. `/branchos:create-pr` assembles a PR body from feature description, phase summaries, GWT checklist, linked issue, and diff stats
+  1. `/branchos:create-pr` assembles a PR body from feature description, GWT checklist, and linked issue reference
   2. Developer sees the assembled PR body and confirms before submission
   3. PR is auto-assigned to the workstream creator's GitHub username
   4. Running the command twice on the same branch does not create a duplicate PR
   5. `sync-issues` sets the assignee on GitHub Issues from workstream assignee metadata
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 18-01: PR body assembly and gh pr create wrapper
-- [ ] 18-02: Slash command, confirmation flow, and assignee sync
+- [ ] 18-01-PLAN.md -- PR body assembly, createPr wrapper, handler, slash command, CLI registration
+- [ ] 18-02-PLAN.md -- Assignee propagation in sync-issues (ASN-03)
 
 ## Progress
 
@@ -138,4 +138,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-03-07*
-*Last updated: 2026-03-13 -- Phase 17 complete*
+*Last updated: 2026-03-13 -- Phase 18 planned*

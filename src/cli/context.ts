@@ -29,6 +29,7 @@ import {
 } from '../constants.js';
 import { readAllResearch } from '../research/research-file.js';
 import { extractSummary } from '../research/extract-summary.js';
+import { readIssueFile } from '../workstream/issue-file.js';
 
 export interface ContextOptions {
   json?: boolean;
@@ -119,6 +120,16 @@ export async function contextHandler(
       // Feature file missing/unreadable - proceed without feature context
     }
   }
+
+  // Load issue context if issue.md exists in workstream directory
+  let issueContext: string | null = null;
+  try {
+    const issueData = await readIssueFile(workstream.path);
+    if (issueData) {
+      const labelStr = issueData.labels.length > 0 ? ` [${issueData.labels.join(', ')}]` : '';
+      issueContext = `## Issue: ${issueData.title}${labelStr}\n\n${issueData.body}`;
+    }
+  } catch { /* proceed without */ }
 
   // Load research summaries from shared research directory
   let researchSummaries: string | null = null;
@@ -251,6 +262,7 @@ export async function contextHandler(
     branchDiffNameStatus,
     branchDiffStat,
     featureContext,
+    issueContext,
     researchSummaries,
   };
 

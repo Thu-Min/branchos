@@ -36,6 +36,7 @@ function makeInput(overrides: Partial<AssemblyInput> = {}): AssemblyInput {
     branchDiffNameStatus: 'M\tsrc/foo.ts\nA\tsrc/bar.ts',
     branchDiffStat: ' src/foo.ts | 10 +++++-----\n src/bar.ts |  5 +++++\n 2 files changed, 10 insertions(+), 5 deletions(-)',
     featureContext: null,
+    issueContext: null,
     researchSummaries: null,
     ...overrides,
   };
@@ -413,6 +414,63 @@ describe('assembleContext', () => {
 
     it('non-research workstreams produce identical output (null researchSummaries skipped)', () => {
       const input = makeInput({ detectedStep: 'discuss', featureContext: null, researchSummaries: null });
+      const result = assembleContext(input);
+
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).toEqual(['Architecture', 'Conventions', 'Decisions', 'Branch Diff']);
+    });
+  });
+
+  describe('issueContext', () => {
+    it('produces NO Issue Context section when issueContext is null', () => {
+      const input = makeInput({ detectedStep: 'discuss', issueContext: null });
+      const result = assembleContext(input);
+
+      expect(result.raw).not.toContain('Issue Context');
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames).not.toContain('Issue Context');
+    });
+
+    it('produces Issue Context section when issueContext is provided', () => {
+      const input = makeInput({
+        detectedStep: 'discuss',
+        issueContext: '## Issue: Fix auth timeout [bug, priority:high]\n\nWhen users have slow connections...',
+      });
+      const result = assembleContext(input);
+
+      expect(result.raw).toContain('Issue Context');
+      expect(result.raw).toContain('Fix auth timeout');
+      expect(result.raw).toContain('When users have slow connections');
+    });
+
+    it('Issue Context section appears AFTER featureContext in discuss step', () => {
+      const input = makeInput({
+        detectedStep: 'discuss',
+        featureContext: 'Feature body content',
+        issueContext: '## Issue: Fix auth timeout\n\nBody',
+      });
+      const result = assembleContext(input);
+
+      const sectionNames = result.sections.map((s) => s.name);
+      expect(sectionNames[0]).toBe('Feature Context');
+      expect(sectionNames[1]).toBe('Issue Context');
+    });
+
+    it('Issue Context section appears in all steps when provided', () => {
+      for (const step of ['discuss', 'plan', 'execute', 'fallback'] as const) {
+        const input = makeInput({
+          detectedStep: step,
+          issueContext: '## Issue: Test\n\nBody',
+        });
+        const result = assembleContext(input);
+
+        const sectionNames = result.sections.map((s) => s.name);
+        expect(sectionNames).toContain('Issue Context');
+      }
+    });
+
+    it('non-issue workstreams produce identical output (null issueContext skipped)', () => {
+      const input = makeInput({ detectedStep: 'discuss', featureContext: null, issueContext: null, researchSummaries: null });
       const result = assembleContext(input);
 
       const sectionNames = result.sections.map((s) => s.name);

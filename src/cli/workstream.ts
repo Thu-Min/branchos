@@ -13,6 +13,7 @@ export function registerWorkstreamCommands(program: Command): void {
     .description('Create a new workstream from current branch')
     .option('--name <name>', 'Override auto-derived workstream ID')
     .option('--feature <id>', 'Link to a feature by ID (e.g., F-001)')
+    .option('--issue <number>', 'Create from GitHub issue number (e.g., 42 or #42)')
     .option('--json', 'Output in JSON format', false)
     .action(async (opts) => {
       const jsonMode = opts.json as boolean;
@@ -25,11 +26,36 @@ export function registerWorkstreamCommands(program: Command): void {
           process.exit(1);
         }
 
+        // Parse and validate --issue flag
+        let issueNumber: number | undefined;
+        if (opts.issue) {
+          const raw = String(opts.issue).replace(/^#/, '');
+          const parsed = parseInt(raw, 10);
+          if (Number.isNaN(parsed) || parsed <= 0) {
+            error(
+              `Invalid issue number: '${opts.issue}'. Provide a positive integer (e.g., 42 or #42).`,
+              { json: jsonMode },
+            );
+            process.exit(1);
+          }
+          issueNumber = parsed;
+        }
+
+        // Mutual exclusivity check at CLI layer
+        if (opts.feature && issueNumber) {
+          error(
+            'Cannot use --issue and --feature together. Use one or the other.',
+            { json: jsonMode },
+          );
+          process.exit(1);
+        }
+
         const repoRoot = await git.getRepoRoot();
         const result = await createWorkstream({
           repoRoot,
           nameOverride: opts.name as string | undefined,
           featureId: opts.feature as string | undefined,
+          issueNumber,
         });
 
         if (jsonMode) {

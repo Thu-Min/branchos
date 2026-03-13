@@ -31,14 +31,15 @@ export interface AssemblyInput {
   branchDiffNameStatus: string | null;
   branchDiffStat: string | null;
   featureContext: string | null;
+  issueContext: string | null;
   researchSummaries: string | null;
 }
 
 const STEP_SECTIONS: Record<WorkflowStep, string[]> = {
-  discuss: ['featureContext', 'researchSummaries', 'architecture', 'conventions', 'decisions', 'branchDiff'],
-  plan: ['featureContext', 'researchSummaries', 'discuss', 'modules', 'conventions', 'decisions', 'branchDiff'],
-  execute: ['featureContext', 'plan', 'execute', 'branchDiff', 'decisions'],
-  fallback: ['featureContext', 'architecture', 'conventions', 'decisions', 'branchDiff', 'hint'],
+  discuss: ['featureContext', 'issueContext', 'researchSummaries', 'architecture', 'conventions', 'decisions', 'branchDiff'],
+  plan: ['featureContext', 'issueContext', 'researchSummaries', 'discuss', 'modules', 'conventions', 'decisions', 'branchDiff'],
+  execute: ['featureContext', 'issueContext', 'plan', 'execute', 'branchDiff', 'decisions'],
+  fallback: ['featureContext', 'issueContext', 'architecture', 'conventions', 'decisions', 'branchDiff', 'hint'],
 };
 
 export function detectStep(phase: Phase | null): WorkflowStep {
@@ -109,6 +110,8 @@ function getSection(key: string, input: AssemblyInput): ContextSection {
   switch (key) {
     case 'featureContext':
       return buildSection('Feature Context', input.featureContext, '');
+    case 'issueContext':
+      return buildSection('Issue Context', input.issueContext, '');
     case 'researchSummaries':
       return buildSection('Research', input.researchSummaries, 'No research findings available.');
     case 'architecture':
@@ -172,6 +175,7 @@ export function assembleContext(input: AssemblyInput): ContextPacket {
 
   for (const key of sectionKeys) {
     if (key === 'featureContext' && !input.featureContext) continue;
+    if (key === 'issueContext' && !input.issueContext) continue;
     if (key === 'researchSummaries' && !input.researchSummaries) continue;
     sections.push(getSection(key, input));
   }

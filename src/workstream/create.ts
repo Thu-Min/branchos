@@ -12,6 +12,8 @@ import { featureBranch } from '../roadmap/slug.js';
 import { promptYesNo } from './prompt.js';
 import { titleSimilarity } from '../roadmap/similarity.js';
 import type { Feature } from '../roadmap/types.js';
+import { fetchIssue } from '../github/issues.js';
+import { writeIssueFile } from './issue-file.js';
 
 export interface CreateWorkstreamResult {
   workstreamId: string;
@@ -25,8 +27,9 @@ export async function createWorkstream(options: {
   repoRoot: string;
   nameOverride?: string;
   featureId?: string;
+  issueNumber?: number;
 }): Promise<CreateWorkstreamResult> {
-  const { repoRoot, nameOverride, featureId } = options;
+  const { repoRoot, nameOverride, featureId, issueNumber } = options;
   const git = new GitOps(repoRoot);
 
   // Check .branchos/ exists
@@ -37,6 +40,43 @@ export async function createWorkstream(options: {
     throw new Error(
       'BranchOS not initialized. Run `branchos init` first.',
     );
+  }
+
+  // Mutual exclusivity check
+  if (featureId && issueNumber) {
+    throw new Error(
+      'Cannot use --issue and --feature together. Use one or the other.',
+    );
+  }
+
+  // Issue-linked flow: fetch issue, find feature, delegate to feature-linked flow
+  if (issueNumber) {
+    const issueData = await fetchIssue(issueNumber);
+
+    // Read features for reverse-lookup
+    const featuresDir = join(branchosPath, SHARED_DIR, 'features');
+    const features = await readAllFeatures(featuresDir);
+
+    const matchedFeature = findFeatureByIssue(features, issueNumber, issueData.title);
+    if (!matchedFeature) {
+      throw new Error(
+        `No feature found for issue #${issueNumber}. The --issue flag requires a matching feature (created by sync-issues or with matching title).`,
+      );
+    }
+
+    const result = await createFeatureLinkedWorkstream(repoRoot, git, branchosPath, matchedFeature.id, issueNumber);
+
+    // Write issue.md to workstream directory
+    await writeIssueFile(result.path, issueData);
+
+    // Commit issue.md as a follow-up
+    const issueRelPath = join(BRANCHOS_DIR, WORKSTREAMS_DIR, result.workstreamId, 'issue.md');
+    await git.addAndCommit(
+      [issueRelPath],
+      `chore: add issue.md for workstream ${result.workstreamId}`,
+    );
+
+    return result;
   }
 
   // Feature-linked flow
@@ -107,6 +147,7 @@ async function createFeatureLinkedWorkstream(
   git: GitOps,
   branchosPath: string,
   featureId: string,
+  issueNumber?: number,
 ): Promise<CreateWorkstreamResult> {
   // 1. Read features
   const featuresDir = join(branchosPath, SHARED_DIR, 'features');
@@ -171,8 +212,8 @@ async function createFeatureLinkedWorkstream(
   // 10. Capture assignee from GitHub CLI
   const assignee = await captureAssignee();
 
-  // 11. Write meta.json with featureId
-  const meta = createMeta(workstreamId, branchName, featureId, assignee);
+  // 11. Write meta.json with featureId and optional issueNumber
+  const meta = createMeta(workstreamId, branchName, featureId, assignee, issueNumber ?? null);
   await writeMeta(join(wsPath, 'meta.json'), meta);
 
   // 11. Write state.json

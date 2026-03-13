@@ -13,7 +13,7 @@ export interface WorkstreamMeta {
   featureId?: string;
 }
 
-export function createMeta(workstreamId: string, branch: string, featureId?: string, assignee: string | null = null): WorkstreamMeta {
+export function createMeta(workstreamId: string, branch: string, featureId?: string, assignee: string | null = null, issueNumber: number | null = null): WorkstreamMeta {
   const now = new Date().toISOString();
   const meta: WorkstreamMeta = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -23,7 +23,7 @@ export function createMeta(workstreamId: string, branch: string, featureId?: str
     createdAt: now,
     updatedAt: now,
     assignee,
-    issueNumber: null,
+    issueNumber,
   };
   if (featureId !== undefined) {
     meta.featureId = featureId;

@@ -8,10 +8,12 @@ export interface WorkstreamMeta {
   status: 'active' | 'archived';
   createdAt: string;
   updatedAt: string;
+  assignee: string | null;
+  issueNumber: number | null;
   featureId?: string;
 }
 
-export function createMeta(workstreamId: string, branch: string, featureId?: string): WorkstreamMeta {
+export function createMeta(workstreamId: string, branch: string, featureId?: string, assignee: string | null = null): WorkstreamMeta {
   const now = new Date().toISOString();
   const meta: WorkstreamMeta = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -20,6 +22,8 @@ export function createMeta(workstreamId: string, branch: string, featureId?: str
     status: 'active',
     createdAt: now,
     updatedAt: now,
+    assignee,
+    issueNumber: null,
   };
   if (featureId !== undefined) {
     meta.featureId = featureId;

@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import { createMeta, WorkstreamMeta } from '../../src/state/meta.js';
+import { describe, it, expect, vi } from 'vitest';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { mkdtemp, rm } from 'fs/promises';
+import { createMeta, readMeta, WorkstreamMeta } from '../../src/state/meta.js';
 
 describe('createMeta', () => {
-  it('returns object with schemaVersion 2', () => {
+  it('returns object with schemaVersion 3', () => {
     const meta = createMeta('payment-retry', 'feature/payment-retry');
-    expect(meta.schemaVersion).toBe(2);
+    expect(meta.schemaVersion).toBe(3);
   });
 
   it('sets correct workstreamId', () => {
@@ -33,9 +37,46 @@ describe('createMeta', () => {
     expect(meta.updatedAt).toBe(meta.createdAt);
   });
 
-  it('has all required fields', () => {
+  it('has all required fields including assignee and issueNumber', () => {
     const meta = createMeta('test-id', 'feature/test');
     const keys = Object.keys(meta).sort();
-    expect(keys).toEqual(['branch', 'createdAt', 'schemaVersion', 'status', 'updatedAt', 'workstreamId']);
+    expect(keys).toEqual(['assignee', 'branch', 'createdAt', 'issueNumber', 'schemaVersion', 'status', 'updatedAt', 'workstreamId']);
+  });
+
+  it('without assignee param sets assignee to null and issueNumber to null', () => {
+    const meta = createMeta('test-id', 'feature/test');
+    expect(meta.assignee).toBeNull();
+    expect(meta.issueNumber).toBeNull();
+  });
+
+  it('with assignee param sets assignee to provided value', () => {
+    const meta = createMeta('test-id', 'feature/test', undefined, 'octocat');
+    expect(meta.assignee).toBe('octocat');
+  });
+
+  it('with assignee=null explicitly sets assignee to null', () => {
+    const meta = createMeta('test-id', 'feature/test', undefined, null);
+    expect(meta.assignee).toBeNull();
+  });
+});
+
+describe('readMeta', () => {
+  it('migrates v2 data to include assignee and issueNumber as null', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'branchos-meta-test-'));
+    const v2Meta = {
+      schemaVersion: 2,
+      workstreamId: 'test',
+      branch: 'feature/test',
+      status: 'active',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const filePath = join(tempDir, 'meta.json');
+    await writeFile(filePath, JSON.stringify(v2Meta));
+    const meta = await readMeta(filePath);
+    expect(meta.assignee).toBeNull();
+    expect(meta.issueNumber).toBeNull();
+    expect(meta.schemaVersion).toBe(3);
+    await rm(tempDir, { recursive: true, force: true });
   });
 });

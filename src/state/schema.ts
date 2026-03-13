@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export interface Migration {
   fromVersion: number;
@@ -20,6 +20,15 @@ export const migrations: Migration[] = [
       schemaVersion: 2,
       currentPhase: 0,
       phases: [],
+    }),
+  },
+  {
+    fromVersion: 2,
+    migrate: (data) => ({
+      ...data,
+      schemaVersion: 3,
+      assignee: null,
+      issueNumber: null,
     }),
   },
 ];

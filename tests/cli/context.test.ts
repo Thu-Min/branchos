@@ -397,6 +397,262 @@ describe('contextHandler', () => {
   });
 });
 
+describe('contextHandler GWT rendering', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'branchos-context-gwt-'));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('renders GWT acceptance criteria as structured checklist in context packet', async () => {
+    initGitRepo(tempDir);
+    const wsDir = await setupWorkstream(tempDir, 'gwt-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    // Link workstream to feature
+    await writeFile(
+      join(wsDir, 'meta.json'),
+      JSON.stringify({
+        branch: execSync('git branch --show-current', { cwd: tempDir }).toString().trim(),
+        featureId: 'F-001',
+      }),
+    );
+
+    // Create feature file with GWT acceptance criteria
+    const featuresDir = join(tempDir, BRANCHOS_DIR, SHARED_DIR, 'features');
+    await mkdir(featuresDir, { recursive: true });
+    await writeFile(
+      join(featuresDir, 'F-001-auth-login.md'),
+      [
+        '---',
+        'id: F-001',
+        'title: Auth Login',
+        'status: in-progress',
+        'milestone: M1',
+        'branch: feature/auth-login',
+        'issue: null',
+        'workstream: null',
+        '---',
+        '',
+        'User authentication via email and password.',
+        '',
+        '## Acceptance Criteria',
+        '',
+        '### AC-1',
+        'Given a user with valid credentials',
+        'When they submit the login form',
+        'Then they receive a JWT token',
+        '',
+        '### AC-2',
+        'Given a user with invalid credentials',
+        'When they submit the login form',
+        'Then they see an error message',
+      ].join('\n'),
+    );
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler(undefined, { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    // Should contain formatted checklist
+    expect(result!.raw).toContain('- [ ] **AC-1**');
+    expect(result!.raw).toContain('- [ ] **AC-2**');
+    expect(result!.raw).toContain('Given a user with valid credentials');
+    // Should preserve description text
+    expect(result!.raw).toContain('User authentication via email and password.');
+  });
+
+  it('renders freeform-only feature body as-is (backward compatible)', async () => {
+    initGitRepo(tempDir);
+    const wsDir = await setupWorkstream(tempDir, 'freeform-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    await writeFile(
+      join(wsDir, 'meta.json'),
+      JSON.stringify({
+        branch: execSync('git branch --show-current', { cwd: tempDir }).toString().trim(),
+        featureId: 'F-002',
+      }),
+    );
+
+    const featuresDir = join(tempDir, BRANCHOS_DIR, SHARED_DIR, 'features');
+    await mkdir(featuresDir, { recursive: true });
+    await writeFile(
+      join(featuresDir, 'F-002-basic-feature.md'),
+      [
+        '---',
+        'id: F-002',
+        'title: Basic Feature',
+        'status: unassigned',
+        'milestone: M1',
+        'branch: feature/basic',
+        'issue: null',
+        'workstream: null',
+        '---',
+        '',
+        'This is a plain feature body with no acceptance criteria heading.',
+        'It should render as-is.',
+      ].join('\n'),
+    );
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler(undefined, { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    // Body should pass through unchanged
+    expect(result!.raw).toContain('This is a plain feature body with no acceptance criteria heading.');
+    expect(result!.raw).toContain('It should render as-is.');
+  });
+
+  it('renders feature with empty body as header only', async () => {
+    initGitRepo(tempDir);
+    const wsDir = await setupWorkstream(tempDir, 'empty-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    await writeFile(
+      join(wsDir, 'meta.json'),
+      JSON.stringify({
+        branch: execSync('git branch --show-current', { cwd: tempDir }).toString().trim(),
+        featureId: 'F-003',
+      }),
+    );
+
+    const featuresDir = join(tempDir, BRANCHOS_DIR, SHARED_DIR, 'features');
+    await mkdir(featuresDir, { recursive: true });
+    await writeFile(
+      join(featuresDir, 'F-003-empty.md'),
+      [
+        '---',
+        'id: F-003',
+        'title: Empty Feature',
+        'status: unassigned',
+        'milestone: M1',
+        'branch: feature/empty',
+        'issue: null',
+        'workstream: null',
+        '---',
+      ].join('\n'),
+    );
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler(undefined, { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    expect(result!.raw).toContain('Empty Feature');
+    // Should have the header table but no body content
+    expect(result!.raw).toContain('| Feature | F-003 |');
+  });
+
+  it('renders mixed GWT + freeform items as unified checklist', async () => {
+    initGitRepo(tempDir);
+    const wsDir = await setupWorkstream(tempDir, 'mixed-ws', {
+      schemaVersion: 2,
+      status: 'in-progress',
+      tasks: [],
+      currentPhase: 1,
+      phases: [
+        {
+          number: 1,
+          status: 'active',
+          discuss: { status: 'not-started' },
+          plan: { status: 'not-started' },
+          execute: { status: 'not-started' },
+        },
+      ],
+    });
+
+    await writeFile(
+      join(wsDir, 'meta.json'),
+      JSON.stringify({
+        branch: execSync('git branch --show-current', { cwd: tempDir }).toString().trim(),
+        featureId: 'F-004',
+      }),
+    );
+
+    const featuresDir = join(tempDir, BRANCHOS_DIR, SHARED_DIR, 'features');
+    await mkdir(featuresDir, { recursive: true });
+    await writeFile(
+      join(featuresDir, 'F-004-mixed.md'),
+      [
+        '---',
+        'id: F-004',
+        'title: Mixed Feature',
+        'status: unassigned',
+        'milestone: M1',
+        'branch: feature/mixed',
+        'issue: null',
+        'workstream: null',
+        '---',
+        '',
+        'A feature with mixed criteria.',
+        '',
+        '## Acceptance Criteria',
+        '',
+        '### AC-1',
+        'Given a user is logged in',
+        'When they click the button',
+        'Then the action completes',
+        '',
+        '- [ ] Performance must be under 200ms',
+      ].join('\n'),
+    );
+
+    const { contextHandler } = await import('../../src/cli/context.js');
+    const result = await contextHandler(undefined, { cwd: tempDir });
+
+    expect(result).not.toBeNull();
+    // GWT block rendered as checklist
+    expect(result!.raw).toContain('- [ ] **AC-1**');
+    // Freeform item also present
+    expect(result!.raw).toContain('- [ ] Performance must be under 200ms');
+    // Description preserved
+    expect(result!.raw).toContain('A feature with mixed criteria.');
+  });
+});
+
 describe('registerContextCommand', () => {
   it('registers "context" command with optional step argument', async () => {
     const { registerContextCommand } = await import('../../src/cli/context.js');

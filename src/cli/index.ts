@@ -10,6 +10,7 @@ import { registerArchiveCommands } from './archive.js';
 import { registerContextCommand } from './context.js';
 import { registerFeaturesCommand } from './features.js';
 import { registerIngestPrfaqCommand } from './ingest-prfaq.js';
+import { registerCreatePrCommand } from './create-pr.js';
 
 export const program = new Command();
 
@@ -32,6 +33,7 @@ registerArchiveCommands(program);
 registerContextCommand(program);
 registerFeaturesCommand(program);
 registerIngestPrfaqCommand(program);
+registerCreatePrCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

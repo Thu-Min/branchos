@@ -90,10 +90,10 @@ Plans:
   1. `create-workstream --issue #N` fetches the issue and populates workstream context from its title and description
   2. If the issue was created by `sync-issues`, the workstream auto-links to the corresponding feature
   3. Issue metadata (title, labels, body) is stored in workstream context and available in context packets
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 17-01: Issue fetch, feature reverse-lookup, and workstream integration
+- [ ] 17-01-PLAN.md -- fetchIssue helper, findFeatureByIssue reverse-lookup, issue-linked createWorkstream path, context assembly integration
 
 ### Phase 18: Create-PR Command & Assignee Sync
 **Goal**: Developers can create a complete, well-structured GitHub PR with one command

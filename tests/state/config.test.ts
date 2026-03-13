@@ -9,7 +9,7 @@ import {
 describe('createDefaultConfig', () => {
   it('returns config with schemaVersion', () => {
     const config = createDefaultConfig();
-    expect(config.schemaVersion).toBe(2);
+    expect(config.schemaVersion).toBe(3);
   });
 });
 

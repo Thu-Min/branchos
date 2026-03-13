@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { createInitialState } from '../../src/state/state.js';
 
 describe('createInitialState', () => {
-  it('returns schemaVersion 2', () => {
+  it('returns schemaVersion 3', () => {
     const state = createInitialState();
-    expect(state.schemaVersion).toBe(2);
+    expect(state.schemaVersion).toBe(3);
   });
 
   it('returns status "created"', () => {

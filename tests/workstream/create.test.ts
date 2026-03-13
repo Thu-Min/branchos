@@ -1,11 +1,21 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createWorkstream } from '../../src/workstream/create.js';
 import { mkdtemp, rm, mkdir, writeFile, readFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
 import { writeFeatureFile } from '../../src/roadmap/feature-file.js';
 import type { Feature } from '../../src/roadmap/types.js';
+
+// Mock captureAssignee
+vi.mock('../../src/github/index.js', () => ({
+  captureAssignee: vi.fn(),
+}));
+
+const { captureAssignee } = await import('../../src/github/index.js');
+const mockedCaptureAssignee = vi.mocked(captureAssignee);
+
+// Import createWorkstream AFTER setting up mock
+const { createWorkstream } = await import('../../src/workstream/create.js');
 
 describe('createWorkstream', () => {
   let tempDir: string;
@@ -24,6 +34,8 @@ describe('createWorkstream', () => {
     execSync('git add .branchos/ && git commit -m "init branchos"', { cwd: tempDir });
     // Create a feature branch
     execSync('git checkout -b feature/payment-retry', { cwd: tempDir, stdio: 'pipe' });
+    // Default: captureAssignee returns a username
+    mockedCaptureAssignee.mockResolvedValue('testuser');
   });
 
   afterEach(async () => {
@@ -39,11 +51,11 @@ describe('createWorkstream', () => {
     const meta = JSON.parse(metaRaw);
     expect(meta.workstreamId).toBe('payment-retry');
     expect(meta.branch).toBe('feature/payment-retry');
-    expect(meta.schemaVersion).toBe(2);
+    expect(meta.schemaVersion).toBe(3);
 
     const stateRaw = await readFile(join(tempDir, '.branchos', 'workstreams', 'payment-retry', 'state.json'), 'utf-8');
     const state = JSON.parse(stateRaw);
-    expect(state.schemaVersion).toBe(2);
+    expect(state.schemaVersion).toBe(3);
     expect(state.status).toBe('created');
     expect(state.tasks).toEqual([]);
   });
@@ -89,6 +101,36 @@ describe('createWorkstream', () => {
     expect(result).toHaveProperty('path');
     expect(result).toHaveProperty('created');
   });
+
+  it('calls captureAssignee and stores result in meta.json', async () => {
+    mockedCaptureAssignee.mockResolvedValue('octocat');
+    const result = await createWorkstream({ repoRoot: tempDir });
+    expect(mockedCaptureAssignee).toHaveBeenCalled();
+    const metaRaw = await readFile(join(tempDir, '.branchos', 'workstreams', result.workstreamId, 'meta.json'), 'utf-8');
+    const meta = JSON.parse(metaRaw);
+    expect(meta.assignee).toBe('octocat');
+  });
+
+  it('meta.json contains issueNumber as null', async () => {
+    const result = await createWorkstream({ repoRoot: tempDir });
+    const metaRaw = await readFile(join(tempDir, '.branchos', 'workstreams', result.workstreamId, 'meta.json'), 'utf-8');
+    const meta = JSON.parse(metaRaw);
+    expect(meta.issueNumber).toBeNull();
+  });
+
+  it('creates workstream with assignee null when captureAssignee returns null', async () => {
+    mockedCaptureAssignee.mockResolvedValue(null);
+    const result = await createWorkstream({ repoRoot: tempDir });
+    expect(result.created).toBe(true);
+    const metaRaw = await readFile(join(tempDir, '.branchos', 'workstreams', result.workstreamId, 'meta.json'), 'utf-8');
+    const meta = JSON.parse(metaRaw);
+    expect(meta.assignee).toBeNull();
+  });
+
+  it('propagates error when captureAssignee throws (unauthenticated)', async () => {
+    mockedCaptureAssignee.mockRejectedValue(new Error('GitHub CLI is installed but not authenticated. Run `gh auth login` first, then retry.'));
+    await expect(createWorkstream({ repoRoot: tempDir })).rejects.toThrow('gh auth login');
+  });
 });
 
 describe('createWorkstream with featureId', () => {
@@ -119,6 +161,8 @@ describe('createWorkstream with featureId', () => {
     await writeFeatureFile(join(tempDir, '.branchos', 'shared', 'features'), testFeature);
     execSync('git add .branchos/ && git commit -m "init branchos with features"', { cwd: tempDir });
     // Stay on main/master (protected) -- feature flow should create branch from here
+    // Default: captureAssignee returns a username
+    mockedCaptureAssignee.mockResolvedValue('testuser');
   });
 
   afterEach(async () => {
@@ -146,6 +190,16 @@ describe('createWorkstream with featureId', () => {
     const meta = JSON.parse(metaRaw);
     expect(meta.featureId).toBe('F-001');
     expect(meta.branch).toBe('feature/user-auth');
+  });
+
+  it('calls captureAssignee and stores result in meta.json for feature-linked flow', async () => {
+    mockedCaptureAssignee.mockResolvedValue('featuredev');
+    const result = await createWorkstream({ repoRoot: tempDir, featureId: 'F-001' });
+    expect(mockedCaptureAssignee).toHaveBeenCalled();
+    const metaRaw = await readFile(join(tempDir, '.branchos', 'workstreams', result.workstreamId, 'meta.json'), 'utf-8');
+    const meta = JSON.parse(metaRaw);
+    expect(meta.assignee).toBe('featuredev');
+    expect(meta.issueNumber).toBeNull();
   });
 
   it('updates feature status to in-progress and sets workstream field', async () => {

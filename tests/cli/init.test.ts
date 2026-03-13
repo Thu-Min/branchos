@@ -49,7 +49,7 @@ describe('branchos init', () => {
       await initHandler({ json: false, cwd: tempDir });
       const configPath = join(tempDir, '.branchos', 'config.json');
       const content = JSON.parse(await readFile(configPath, 'utf-8'));
-      expect(content.schemaVersion).toBe(2);
+      expect(content.schemaVersion).toBe(3);
     });
 
     it('adds .branchos-runtime/ to .gitignore', async () => {

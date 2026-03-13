@@ -5,6 +5,7 @@ import { BRANCHOS_DIR, SHARED_DIR, WORKSTREAMS_DIR } from '../constants.js';
 import { slugifyBranch, isProtectedBranch } from './resolve.js';
 import { discoverWorkstreams } from './discover.js';
 import { createMeta, writeMeta } from '../state/meta.js';
+import { captureAssignee } from '../github/index.js';
 import { createInitialState, writeState } from '../state/state.js';
 import { readAllFeatures, writeFeatureFile } from '../roadmap/feature-file.js';
 import { featureBranch } from '../roadmap/slug.js';
@@ -73,8 +74,11 @@ export async function createWorkstream(options: {
   const wsPath = join(workstreamsDir, workstreamId);
   await mkdir(wsPath, { recursive: true });
 
+  // Capture assignee from GitHub CLI
+  const assignee = await captureAssignee();
+
   // Write meta.json
-  const meta = createMeta(workstreamId, branch);
+  const meta = createMeta(workstreamId, branch, undefined, assignee);
   await writeMeta(join(wsPath, 'meta.json'), meta);
 
   // Write state.json
@@ -162,8 +166,11 @@ async function createFeatureLinkedWorkstream(
   const wsPath = join(workstreamsDir, workstreamId);
   await mkdir(wsPath, { recursive: true });
 
-  // 10. Write meta.json with featureId
-  const meta = createMeta(workstreamId, branchName, featureId);
+  // 10. Capture assignee from GitHub CLI
+  const assignee = await captureAssignee();
+
+  // 11. Write meta.json with featureId
+  const meta = createMeta(workstreamId, branchName, featureId, assignee);
   await writeMeta(join(wsPath, 'meta.json'), meta);
 
   // 11. Write state.json

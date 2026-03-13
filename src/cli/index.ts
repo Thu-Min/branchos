@@ -1,23 +1,23 @@
-import { Command } from 'commander';
-import { registerInitCommand } from './init.js';
-import { registerMapStatusCommand } from './map-status.js';
-import { registerCheckDriftCommand } from './check-drift.js';
-import { registerStatusCommand } from './status.js';
-import { registerDetectConflictsCommand } from './detect-conflicts.js';
-import { registerInstallCommandsCommand } from './install-commands.js';
-import { registerWorkstreamCommands } from './workstream.js';
-import { registerArchiveCommands } from './archive.js';
-import { registerContextCommand } from './context.js';
-import { registerFeaturesCommand } from './features.js';
-import { registerIngestPrfaqCommand } from './ingest-prfaq.js';
-import { registerCreatePrCommand } from './create-pr.js';
+import { Command } from "commander";
+import { registerInitCommand } from "./init.js";
+import { registerMapStatusCommand } from "./map-status.js";
+import { registerCheckDriftCommand } from "./check-drift.js";
+import { registerStatusCommand } from "./status.js";
+import { registerDetectConflictsCommand } from "./detect-conflicts.js";
+import { registerInstallCommandsCommand } from "./install-commands.js";
+import { registerWorkstreamCommands } from "./workstream.js";
+import { registerArchiveCommands } from "./archive.js";
+import { registerContextCommand } from "./context.js";
+import { registerFeaturesCommand } from "./features.js";
+import { registerIngestPrfaqCommand } from "./ingest-prfaq.js";
+import { registerCreatePrCommand } from "./create-pr.js";
 
 export const program = new Command();
 
 program
-  .name('branchos')
-  .description('Branch-based AI-assisted development workflow management')
-  .version('2.1.2');
+  .name("branchos")
+  .description("Branch-based AI-assisted development workflow management")
+  .version("2.2.2");
 
 // Register bootstrapper commands
 registerInitCommand(program);

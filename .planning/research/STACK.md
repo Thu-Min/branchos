@@ -1,236 +1,239 @@
-# Stack Research
+# Technology Stack
 
-**Domain:** Interactive research slash commands for BranchOS v2.1
-**Researched:** 2026-03-11
-**Confidence:** HIGH
+**Project:** BranchOS v2.2 - PR Workflow & Developer Experience
+**Researched:** 2026-03-13
+**Scope:** Stack additions for PR creation, Gherkin acceptance criteria, GitHub assignee management, issue detail fetching
 
-## Existing Stack (DO NOT CHANGE)
+## Executive Summary
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Node.js | >=20 | Runtime |
-| TypeScript | ^5.5.0 | Type safety |
-| Commander | ^12.1.0 | CLI framework (bootstrapper only) |
-| simple-git | ^3.27.0 | Git operations |
-| chalk | ^4.1.2 | Terminal output (CJS-compatible v4) |
-| tsup | ^8.3.0 | Build (CJS output) |
-| vitest | ^3.0.0 | Testing |
+No new dependencies needed. All four capabilities are achievable using the existing `gh` CLI via `execFile` (the established `ghExec` pattern) and hand-rolled parsing for Given/When/Then format. This is consistent with the project's zero-dependency philosophy for GitHub integration and the precedent of the hand-rolled YAML frontmatter parser.
 
-The existing stack shipped v2.0 with 10,870 LOC. v2.1 adds interactive research capabilities. This document covers ONLY what changes.
+## Recommended Stack Additions
 
-## Recommended Additions
+### New Runtime Dependencies
 
-### Zero New Runtime Dependencies
+**None.** Zero new npm dependencies required.
 
-**The critical architectural insight: interactive research requires no new libraries.**
+### New `gh` CLI Commands Used
 
-BranchOS slash commands are markdown instruction files that Claude Code executes. "Interactive research" means writing a slash command that instructs Claude Code to:
+| Command | Purpose | Flags | Confidence |
+|---------|---------|-------|------------|
+| `gh pr create` | Create PR from workstream | `--title`, `--body-file`, `--base`, `--assignee`, `--head` | HIGH |
+| `gh issue view <N>` | Fetch issue details by number | `--json title,body,labels,milestone,assignees,url` | HIGH |
+| `gh issue edit <N>` | Set assignee on synced issues | `--add-assignee <login>` | HIGH |
+| `gh api user` | Get current authenticated username | `--jq .login` | HIGH |
 
-1. Conduct conversational research using its built-in tools (WebSearch, WebFetch, Read, Grep, Glob)
-2. Store findings as markdown artifacts in `.branchos/`
-3. Track research sessions in workstream state
+## Detailed Analysis
 
-Every capability needed already exists in the runtime:
+### 1. PR Creation via `gh pr create`
 
-| Capability | How It Works | Library Needed |
-|------------|-------------|----------------|
-| Conversational back-and-forth | Claude Code's natural conversation loop | None -- it is the host environment |
-| Web search | Claude Code's built-in `WebSearch` tool | None -- declared in `allowed-tools` |
-| Web fetching | Claude Code's built-in `WebFetch` tool | None -- declared in `allowed-tools` |
-| Research artifact storage | `fs.writeFile` to `.branchos/` paths | None -- Node.js built-in |
-| YAML frontmatter on artifacts | Hand-rolled parser (proven in v2.0) | None -- `src/roadmap/frontmatter.ts` pattern |
-| State tracking | JSON read/write to `state.json` | None -- existing pattern |
-| Git commit of artifacts | `simple-git` (already a dependency) | None -- already present |
+**Approach:** Use `ghExec` with argument array (existing pattern from `github/issues.ts`).
 
-### Slash Command Tool Access
+**Key flags:**
+- `--title "text"` - PR title
+- `--body-file <path>` - PR body from temp file (reuse the temp-file pattern from `createIssue` for large bodies)
+- `--base <branch>` - Target branch (typically `main`)
+- `--head <branch>` - Source branch (current workstream branch)
+- `--assignee <login>` - Auto-assign PR creator
 
-The research slash command needs these `allowed-tools` in its frontmatter:
+Note: `--repo` is not needed; `gh` auto-detects from git remote.
 
-```yaml
-allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Bash(npx branchos *), Bash(git *)
-```
-
-This is the first BranchOS slash command to use `WebSearch` and `WebFetch`. These are Claude Code built-in tools -- no installation, no API keys from BranchOS's side. Claude Code handles authentication and rate limiting.
-
-**Important constraint:** `WebSearch` and `WebFetch` availability depends on the user's Claude Code plan and configuration. The slash command should degrade gracefully if these tools are unavailable (instruct Claude to note when web research was not possible and proceed with training knowledge).
-
-## Architecture Decisions for v2.1
-
-### Research Artifact Format: Markdown with Frontmatter
-
-Use the same hand-rolled frontmatter pattern from `src/roadmap/frontmatter.ts`, extended with a research-specific type.
-
+**Implementation pattern:**
 ```typescript
-// New type alongside FeatureFrontmatter
-export interface ResearchFrontmatter {
-  id: string;          // e.g., "R-001"
-  topic: string;       // research topic/question
-  status: 'in-progress' | 'complete';
-  createdAt: string;   // ISO 8601
-  updatedAt: string;   // ISO 8601
-  sources: number;     // count of cited sources
+// New file: github/pr.ts -- follows existing createIssue pattern in github/issues.ts
+export async function createPullRequest(opts: CreatePROptions): Promise<{ number: number; url: string }> {
+  const args = ['pr', 'create', '--title', opts.title, '--base', opts.base];
+  // Use --body-file for large PR bodies (same temp-file pattern as createIssue)
+  // Use --assignee for auto-assignment
+  // Parse URL from stdout to extract PR number
 }
 ```
 
-**Why reuse the hand-rolled parser:**
-- v2.0 explicitly chose hand-rolled over gray-matter (see KEY DECISIONS in PROJECT.md)
-- The parser is proven, tested, zero-dep
-- Research frontmatter has simple flat fields -- no nested YAML, no arrays
-- Consistency: all BranchOS frontmatter uses the same parser
+**Why not `@octokit/rest`:** The `gh` CLI handles auth, repo detection, and error formatting. Adding Octokit would add a dependency, require token management, and duplicate what `gh` already provides. The project has an established `ghExec` wrapper using `execFile` to prevent shell injection.
 
-**Storage location:** `.branchos/shared/research/R-NNN-<slug>.md`
+**Confidence:** HIGH - flags verified via official CLI manual.
 
-This mirrors the feature registry pattern (`.branchos/shared/features/F-NNN-<slug>.md`) and keeps research artifacts in the shared layer (visible to all workstreams).
+### 2. Given/When/Then (Gherkin) Acceptance Criteria
 
-### Research State Tracking: Extend Existing Patterns
+**Approach:** Hand-roll a simple parser/formatter. Do NOT use `@cucumber/gherkin` or any Gherkin library.
 
-Two options for tracking research sessions:
+**Why hand-roll:**
+- BranchOS uses a simplified subset: only `Given`, `When`, `Then`, `And` keywords in plain text
+- No need for feature files, scenarios, data tables, backgrounds, scenario outlines, or any Cucumber execution features
+- `@cucumber/gherkin` (official parser) is a heavy dependency designed for test execution, not document formatting
+- Project precedent: hand-rolled YAML frontmatter parser (`roadmap/frontmatter.ts`) over `gray-matter`
+- The format is structurally simple: lines starting with `Given`/`When`/`Then`/`And` keywords
 
-**Option A (recommended): File-based tracking only.** Research artifacts exist as files in `.branchos/shared/research/`. Listing research = reading the directory. Status = reading frontmatter. No state.json changes needed.
+**Format in feature file body:**
+```markdown
+## Acceptance Criteria
 
-**Why Option A:** The feature registry already works this way -- features are tracked by their files, not by entries in state.json. Research follows the same pattern. This avoids a schema migration (v2 -> v3) for the workstream state file.
-
-**Option B (rejected): Add research array to state.json.** Would require schema migration, adds complexity, and the file-based approach is proven.
-
-### Research Session Flow: Slash Command Orchestration
-
-The slash command instructs Claude Code to follow a multi-step research flow. No orchestration library or state machine is needed -- the slash command markdown IS the orchestration.
-
-```
-User runs /branchos:research "authentication patterns for Node.js APIs"
-  -> Claude Code reads the slash command instructions
-  -> Claude Code uses WebSearch/WebFetch to research
-  -> Claude Code has a back-and-forth with the user (natural conversation)
-  -> Claude Code writes findings to .branchos/shared/research/R-001-auth-patterns.md
-  -> Claude Code commits via git
+Given a workstream linked to feature F-001
+When the developer runs /branchos:create-pr
+Then a GitHub PR is created with the feature description in the body
+And the PR is assigned to the workstream creator
 ```
 
-The "conversational" aspect is inherent in Claude Code. The slash command just needs to:
-1. Tell Claude Code what to do
-2. Provide the output format
-3. Specify where to store results
-
-### Context Assembly Integration
-
-Research artifacts should be includable in context packets. Extend `AssemblyInput`:
-
+**Parsing approach:**
 ```typescript
-// Add to AssemblyInput
-researchContext: string | null;  // concatenated research summaries relevant to current work
+// New file: roadmap/acceptance.ts (~40-50 lines)
+interface AcceptanceCriterion {
+  given: string[];   // conditions
+  when: string[];    // actions
+  then: string[];    // expected outcomes
+}
+
+// Parse markdown body to extract Given/When/Then blocks
+// Simple line-by-line parser tracking current keyword context
+// "And" appends to whichever keyword (given/when/then) was last seen
 ```
 
-The context command can read `.branchos/shared/research/` and include relevant research based on topic matching or explicit linking (e.g., feature files could reference research IDs).
+**Why not a library:**
+- `@cucumber/gherkin` (~200KB) parses full `.feature` file syntax including `Feature:`, `Scenario:`, `Background:`, tags, data tables, doc strings
+- We need to detect lines starting with 4 keywords in a markdown section
+- A hand-rolled parser is ~40-50 lines of TypeScript, fully testable, zero dependencies
+- Consistent with project philosophy: "Zero new dependencies for [feature]" (v2.1 precedent)
 
-### No CLI Command Needed
+**Confidence:** HIGH - format is simple enough that a library adds complexity without value.
 
-Research is a slash-command-only workflow. No `branchos research` CLI command. This is consistent with the v2.0 decision to make CLI a bootstrapper only.
+### 3. GitHub Assignee Management
 
-The only CLI-side work is:
-1. Add the new slash command `.md` file to the COMMANDS record
-2. Extend the frontmatter parser to handle `ResearchFrontmatter`
-3. Optionally extend context assembly to include research
+**Approach:** Use `gh issue edit --add-assignee` for setting assignees on issues during `sync-issues`.
 
-## What NOT to Add (and Why)
+**For issue assignees (sync-issues enhancement):**
+```typescript
+// Add --add-assignee to existing updateIssue or create dedicated function
+await ghExec(['issue', 'edit', String(issueNumber), '--add-assignee', username]);
+```
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `inquirer` / `prompts` / `@clack/prompts` | No interactive terminal -- runs inside Claude Code | Claude Code's natural conversation |
-| `axios` / `node-fetch` / `got` | Web fetching is Claude Code's job via WebFetch tool | `allowed-tools: WebFetch` in slash command |
-| `cheerio` / `jsdom` / `puppeteer` | Web scraping is Claude Code's job via WebFetch | `allowed-tools: WebFetch` in slash command |
-| `langchain` / `llamaindex` / AI SDKs | Claude Code IS the AI -- no need to call AI APIs from BranchOS | Slash command instructions |
-| `gray-matter` | v2.0 shipped without it; hand-rolled parser is proven and zero-dep | Extend existing `frontmatter.ts` |
-| `zod` / `joi` | v2.0 decision: TypeScript interfaces + type guards | Same pattern as `FeatureFrontmatter` |
-| `lowdb` / `sqlite3` / any database | File-based storage is the architecture -- research = markdown files | `fs.readFile` / `fs.writeFile` |
-| `fuse.js` / search libraries | Research lookup is simple directory listing + frontmatter reading | `fs.readdir` + `parseFrontmatter` |
-| `marked` / `markdown-it` / `remark` | BranchOS never renders markdown to HTML | String manipulation |
-| `chokidar` / file watchers | Explicit commands, not real-time | On-demand file reads |
+**For getting current GitHub username (workstream creation):**
+```typescript
+// New function in github/index.ts
+export async function getGitHubUsername(): Promise<string> {
+  const login = await ghExec(['api', 'user', '--jq', '.login']);
+  return login.trim();
+}
+```
+
+**Why `gh api user` over `gh auth status`:** `gh auth status` does not have a stable `--json username` output. `gh api user --jq .login` returns just the login string, clean and directly parseable. This is the idiomatic way to get the current user.
+
+**Why `--add-assignee` over REST API:** The `gh issue edit --add-assignee` flag handles auth, repo context, and is idempotent (adding an already-assigned user is a no-op). Using `gh api` with POST to `/repos/{owner}/{repo}/issues/{issue_number}/assignees` works but requires manually constructing JSON payloads for no benefit.
+
+**Confidence:** HIGH - verified via official `gh issue edit` manual and `gh api user` endpoint.
+
+### 4. Fetching Issue Details by Number
+
+**Approach:** Use `gh issue view <N> --json <fields>`.
+
+**Available JSON fields (verified):** `assignees`, `author`, `body`, `closed`, `closedAt`, `comments`, `createdAt`, `id`, `labels`, `milestone`, `number`, `state`, `title`, `updatedAt`, `url`
+
+**Implementation:**
+```typescript
+// New function in github/issues.ts
+export interface GitHubIssueDetails {
+  number: number;
+  title: string;
+  body: string;
+  labels: Array<{ name: string }>;
+  milestone?: { title: string };
+  assignees: Array<{ login: string }>;
+  url: string;
+}
+
+export async function getIssueDetails(issueNumber: number): Promise<GitHubIssueDetails> {
+  const json = await ghExec([
+    'issue', 'view', String(issueNumber),
+    '--json', 'number,title,body,labels,milestone,assignees,url'
+  ]);
+  return JSON.parse(json);
+}
+```
+
+**Linking issue to feature:** When `create-workstream --issue #N` is used, the fetched issue title can be matched against existing features using the title similarity matching already in `roadmap/similarity.ts` to auto-link to the feature that created the issue via `sync-issues`.
+
+**Confidence:** HIGH - `gh issue view --json` is well-documented and stable.
+
+## Integration Points with Existing Code
+
+| New Capability | Existing Code to Extend | Integration Approach |
+|---------------|------------------------|---------------------|
+| PR creation | `github/index.ts` (ghExec) | New `github/pr.ts` module, same pattern as `github/issues.ts` |
+| Given/When/Then parsing | `roadmap/frontmatter.ts` (generic parser) | New `roadmap/acceptance.ts` module for parsing/formatting |
+| Assignee on issues | `github/issues.ts` (updateIssue) | Add `--add-assignee` arg to `updateIssue` opts, or new `setIssueAssignee` |
+| Issue detail fetching | `github/issues.ts` | New `getIssueDetails` function in same module |
+| Username in workstream | `state/meta.ts` (WorkstreamMeta) | Add optional `assignee` field to `WorkstreamMeta` |
+| GWT in context packets | `context/assemble.ts` | Parse acceptance criteria from feature body, format as structured section |
+
+## Schema Changes Required
+
+### WorkstreamMeta (state/meta.ts)
+
+Add optional `assignee` field:
+```typescript
+export interface WorkstreamMeta {
+  // ... existing fields
+  assignee?: string;  // GitHub username captured on create-workstream
+}
+```
+
+This is backward compatible -- existing workstreams without `assignee` continue to work. No schema migration needed since `meta.json` parsing uses `JSON.parse` (not strict validation).
+
+### FeatureFrontmatter (roadmap/types.ts)
+
+No changes needed. Acceptance criteria live in the feature body (markdown), not frontmatter. The Given/When/Then format is parsed from the body's `## Acceptance Criteria` section.
+
+## What NOT to Add
+
+| Library | Why Not |
+|---------|---------|
+| `@cucumber/gherkin` | Massive overkill; we need 4-keyword detection, not a full BDD framework parser |
+| `@octokit/rest` | `gh` CLI handles auth, repo detection, rate limiting; Octokit duplicates infrastructure |
+| `gray-matter` | Already rejected in v2.0; hand-rolled frontmatter parser works well |
+| `gherkin-parse` / `gherkin-parser` | Designed for `.feature` files, not markdown sections |
+| Any markdown parser (`marked`, `remark`) | Feature bodies are raw markdown; no AST needed for keyword extraction |
+| `inquirer` / `@clack/prompts` | Runs inside Claude Code; no terminal prompting needed |
+
+## Alternatives Considered
+
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| GitHub integration | `gh` CLI via `execFile` | `@octokit/rest` | Extra dependency, token management, loses repo auto-detection |
+| GWT parsing | Hand-rolled (~40 LOC) | `@cucumber/gherkin` | 200KB+ dependency for 4-keyword detection |
+| Username retrieval | `gh api user --jq .login` | `gh auth status` parsing | No stable JSON output for username |
+| PR body assembly | Temp file + `--body-file` | `--body` flag inline | PR bodies will be large; body-file is safer for shell limits |
+| Assignee setting | `gh issue edit --add-assignee` | `gh api POST .../assignees` | CLI flag is simpler, idempotent, no JSON construction |
+
+## Dependency Impact
+
+| Metric | v2.1 (current) | v2.2 (after additions) |
+|--------|----------------|------------------------|
+| Runtime deps | 3 (commander, simple-git, chalk) | 3 (unchanged) |
+| Dev deps | 5 (@types/node, tsup, tsx, typescript, vitest) | 5 (unchanged) |
+| External tool deps | git, gh (optional) | git, gh (**required** for PR/assignee features) |
+| New source files | -- | ~3-4 (`github/pr.ts`, `roadmap/acceptance.ts`, slash command) |
+
+**Note:** `gh` CLI moves from optional (used only by `sync-issues`) to required for the new PR creation and assignee features. The existing `checkGhAvailable()` function in `github/index.ts` already handles detection and provides clear error messages.
 
 ## Installation
 
 ```bash
-# No new dependencies needed for v2.1
-# The existing stack handles everything
+# No new packages to install
+# Existing dependencies are sufficient:
+#   - commander (CLI)
+#   - simple-git (git operations)
+#   - chalk (output formatting)
+#   - gh CLI (system dependency, now required for v2.2 features)
 ```
-
-Zero new runtime dependencies. Zero new dev dependencies. The research feature is built entirely with:
-- Existing Node.js built-ins (`fs`, `path`, `crypto`)
-- Existing dependencies (`simple-git`, `chalk`)
-- Existing patterns (frontmatter parser, file-based state, slash command orchestration)
-- Claude Code's built-in tools (`WebSearch`, `WebFetch`)
-
-## Dependency Impact
-
-| Metric | v2.0 (current) | v2.1 (after additions) |
-|--------|----------------|------------------------|
-| Runtime deps | 3 (commander, simple-git, chalk) | 3 (unchanged) |
-| Dev deps | 5 (@types/node, tsup, tsx, typescript, vitest) | 5 (unchanged) |
-| External tool deps | git, gh (optional) | git, gh (optional) -- unchanged |
-| New source files | -- | ~3-5 (research types, frontmatter extension, slash command, context integration) |
-
-## Stack Patterns for v2.1 Features
-
-**Research Slash Command:**
-- Markdown instruction file in `commands/branchos:research.md`
-- Uses `$ARGUMENTS` for research topic
-- Declares `WebSearch` and `WebFetch` in `allowed-tools`
-- Instructs Claude Code on conversational research flow and output format
-- Shells out to `npx branchos` only for state operations (if any)
-
-**Research Artifact Storage:**
-- Files at `.branchos/shared/research/R-NNN-<slug>.md`
-- YAML frontmatter via extended hand-rolled parser
-- Body contains findings, sources, recommendations
-- Auto-committed to git (same pattern as discuss.md, features)
-
-**Research-to-Context Pipeline:**
-- Research artifacts readable by `/branchos:context` command
-- Included in context packets when relevant to current workstream
-- Simple: read directory, parse frontmatter, filter by topic/milestone
-
-**Research Listing:**
-- New slash command `/branchos:list-research` (or extend `/branchos:features` to show research)
-- Reads `.branchos/shared/research/`, parses frontmatter, displays table
-- Same pattern as feature listing
-
-## Alternatives Considered
-
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| Claude Code WebSearch | Brave Search API via CLI tool | If user has Brave API key and wants independent search index. Could be mentioned in slash command as optional enhancement. |
-| File-based research storage | SQLite via better-sqlite3 | Never for BranchOS. File-based is the core architecture. SQLite would break git-committed artifacts. |
-| Hand-rolled frontmatter | gray-matter | If frontmatter needs become complex (nested YAML, arrays). Current research metadata is flat -- no need. |
-| Single research command | Separate research-start / research-continue / research-finish | If research sessions span multiple Claude Code sessions. For v2.1, single-session research is sufficient. Multi-session can be added later by checking for existing in-progress research files. |
-
-## Version Compatibility
-
-No new packages means no new compatibility concerns. The existing stack compatibility from v2.0 remains unchanged.
-
-| Existing Package | Status | Notes |
-|------------------|--------|-------|
-| Node.js >=20 | Compatible | `fs/promises`, `crypto`, `path` -- all stable APIs used |
-| TypeScript ^5.5.0 | Compatible | No new type features needed |
-| tsup ^8.3.0 | Compatible | No build config changes |
-| vitest ^3.0.0 | Compatible | New test files follow existing patterns |
-
-## Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| WebSearch/WebFetch unavailable in user's Claude Code | LOW | MEDIUM -- research degrades to training knowledge only | Slash command includes fallback instructions |
-| Research artifacts grow large | LOW | LOW -- they're markdown files | Keep summaries concise; detail in sources section |
-| Frontmatter parser needs arrays (e.g., tags) | MEDIUM | LOW -- easy to add | Extend parser when needed; still no gray-matter required |
-| Multi-session research needed | MEDIUM | LOW | v2.1 starts single-session; in-progress status enables future multi-session |
 
 ## Sources
 
-- Existing BranchOS source: `src/roadmap/frontmatter.ts` -- hand-rolled YAML parser, proven in v2.0 (HIGH confidence, primary source)
-- Existing BranchOS source: `src/context/assemble.ts` -- context packet assembly pattern (HIGH confidence, primary source)
-- Existing BranchOS source: `src/commands/index.ts`, `commands/*.md` -- slash command architecture (HIGH confidence, primary source)
-- Existing BranchOS source: `src/cli/install-commands.ts` -- command installation pattern (HIGH confidence, primary source)
-- PROJECT.md key decisions: "Hand-rolled YAML frontmatter parser -- no gray-matter dependency" (HIGH confidence, project decision)
-- PROJECT.md key decisions: "No interactive prompt library needed" (HIGH confidence, project decision)
-- Claude Code documentation: WebSearch and WebFetch are built-in tools available via allowed-tools (HIGH confidence, platform feature)
+- [gh pr create - Official CLI Manual](https://cli.github.com/manual/gh_pr_create) - HIGH confidence
+- [gh issue view - Official CLI Manual](https://cli.github.com/manual/gh_issue_view) - HIGH confidence
+- [gh issue edit - Official CLI Manual](https://cli.github.com/manual/gh_issue_edit) - HIGH confidence
+- [gh auth status - Official CLI Manual](https://cli.github.com/manual/gh_auth_status) - HIGH confidence
+- [REST API for Issue Assignees - GitHub Docs](https://docs.github.com/en/rest/issues/assignees) - HIGH confidence
+- [@cucumber/gherkin - npm](https://www.npmjs.com/package/@cucumber/gherkin) - HIGH confidence (verified exists, rejected)
 
 ---
-*Stack research for: BranchOS v2.1 interactive research slash commands*
-*Researched: 2026-03-11*
+*Stack research for: BranchOS v2.2 PR Workflow & Developer Experience*
+*Researched: 2026-03-13*

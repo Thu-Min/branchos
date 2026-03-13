@@ -1,484 +1,556 @@
-# Architecture Research: Interactive Research Integration (v2.1)
+# Architecture Patterns
 
-**Domain:** Interactive research slash commands for CLI-driven AI workflow tool
-**Researched:** 2026-03-11
-**Confidence:** HIGH (based on direct codebase analysis of existing v2.0 architecture)
+**Domain:** PR workflow and developer experience features for existing CLI tool
+**Researched:** 2026-03-13
+**Confidence:** HIGH (based on direct codebase analysis of v2.1 architecture)
 
-## System Overview: How Research Fits
+## Recommended Architecture
+
+The 4 new features (create-pr, GWT acceptance criteria, issue-linked workstreams, automatic assignees) integrate into the existing two-layer architecture without structural changes. No new layers are needed -- each feature extends existing modules with focused additions.
+
+### High-Level Integration Map
 
 ```
-                         BranchOS Architecture (v2.0 + v2.1 additions)
- ====================================================================
-
- Slash Commands (Claude Code)
- ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐
- │ /context │ │ /discuss │ │  /plan   │ │ /execute │ │ /research │ <-- NEW
- └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └─────┬─────┘
-      │            │            │            │              │
- ─────┴────────────┴────────────┴────────────┴──────────────┴─────
-                    Context Assembly Layer
- ┌────────────────────────────────────────────────────────────────┐
- │  assembleContext() — pure function, no I/O                     │
- │  Input: AssemblyInput   Output: ContextPacket                  │
- │  v2.1: + researchContext field in AssemblyInput                │
- └──────────┬─────────────────────────────────────────────────────┘
-            │
- ─────────────────────────────────────────────────────────────────
-                         State Layer
- ┌──────────────────────────┐  ┌──────────────────────────────────┐
- │  Shared State             │  │  Workstream State                │
- │  .branchos/shared/        │  │  .branchos/workstreams/<id>/     │
- │  ├── codebase/            │  │  ├── meta.json                  │
- │  ├── features/            │  │  │   (+ researchRefs: ["R-001"])│
- │  ├── prfaq/               │  │  ├── state.json                 │
- │  └── research/       NEW  │  │  ├── decisions.md               │
- │      ├── index.json       │  │  └── phases/<n>/                 │
- │      ├── R-001-<slug>.md  │  │      ├── discuss.md             │
- │      └── R-002-<slug>.md  │  │      ├── plan.md                │
- └──────────────────────────┘  │      └── execute.md              │
-                                └──────────────────────────────────┘
+                    SLASH COMMANDS (commands/)
+                         |
+          +--------------+--------------+------------------+
+          |              |              |                  |
+  branchos:create-pr  branchos:create-workstream  branchos:sync-issues
+     (NEW)              (MODIFY --issue)            (MODIFY assignee)
+          |              |              |                  |
+          v              v              v                  v
+     CLI LAYER (src/cli/)
+          |              |              |                  |
+  create-pr.ts       workstream.ts   sync-issues.ts
+     (NEW)            (MODIFY)        (MODIFY)
+          |              |              |                  |
+          v              v              v                  v
+     DOMAIN LAYER
+          |              |              |                  |
+  src/github/        src/workstream/  src/github/
+    pr.ts (NEW)        create.ts       issues.ts
+    username.ts (NEW)   (MODIFY)       (MODIFY)
+          |              |
+          v              v
+  src/context/       src/state/
+    (no change)        meta.ts (MODIFY -- assignee, issueNumber)
+                     src/state/
+                       schema.ts (MODIFY -- v3 migration)
 ```
 
-## Key Architectural Decision: Research Lives in Shared State
+### Component Boundaries
 
-**Decision: `.branchos/shared/research/`**
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `src/github/pr.ts` (NEW) | PR creation via `gh pr create` | `ghExec` from `github/index.ts` |
+| `src/github/username.ts` (NEW) | Capture authenticated GitHub username | `ghExec` from `github/index.ts` |
+| `src/cli/create-pr.ts` (NEW) | PR body assembly from workstream context | `github/pr.ts`, `state/meta.ts`, `roadmap/feature-file.ts`, `git/index.ts` |
+| `src/github/issues.ts` (MODIFY) | Add `assignIssue` + `viewIssue` functions | `ghExec` from `github/index.ts` |
+| `src/state/meta.ts` (MODIFY) | Add `assignee` and `issueNumber` fields | Schema migration |
+| `src/workstream/create.ts` (MODIFY) | Add `--issue` flow, auto-capture assignee | `github/username.ts`, `github/issues.ts`, `roadmap/feature-file.ts` |
+| `src/context/assemble.ts` | NO CHANGE -- feature body already flows through | Pure function, no new dependencies |
+| `src/cli/context.ts` (MODIFY) | Add issue number to feature context table | `roadmap/types.ts` |
+| `src/cli/sync-issues.ts` (MODIFY) | Set assignee during sync from workstream meta | `github/issues.ts`, `state/meta.ts` |
 
-Research is domain knowledge, not workstream-specific work. A research session on "authentication patterns" is valuable to every workstream, not just the one that triggered it. This matches how `codebase/`, `features/`, and `prfaq/` already work -- repo-level knowledge in shared state, workstream-scoped artifacts in workstream directories.
+### Data Flow
 
-Workstreams hold references, not copies. A workstream's `meta.json` gains an optional `researchRefs` array linking to relevant research IDs. Context assembly reads the referenced research at packet-build time.
+```
+WORKSTREAM CREATION (with --issue):
+  --issue 42 ──> gh issue view 42 ──> title "[F-003] Auth System"?
+                                        ├── YES: extract F-003, delegate to existing --feature flow
+                                        └── NO: standard create + store issueNumber in meta
+                 gh api user ──> "thumin" ──> meta.assignee
 
-## Component Responsibilities
+PR CREATION:
+  meta.json ──> featureId ──> feature file ──> description + GWT criteria
+           ──> assignee ──────────────────────> --assignee flag on gh pr create
+           ──> issueNumber ─────────────────> "Closes #N" in PR body
+  phases/N/*.md ──────────────────────────────> phase summaries in body
+  git diff --stat ────────────────────────────> changed files summary
 
-| Component | Responsibility | New / Modified |
-|-----------|----------------|----------------|
-| `commands/branchos:research.md` | Slash command for conversational research | **NEW** |
-| `src/research/types.ts` | Research artifact types, status type, index type | **NEW** |
-| `src/research/store.ts` | Read/write research files and index.json | **NEW** |
-| `src/research/slug.ts` | Topic-to-filename slug conversion | **NEW** |
-| `src/research/index.ts` | Barrel export | **NEW** |
-| `src/context/assemble.ts` | Include research context in context packets | **MODIFIED** |
-| `src/cli/context.ts` | Load research files for referenced workstreams | **MODIFIED** |
-| `src/commands/index.ts` | Register `branchos:research.md` in COMMANDS record | **MODIFIED** |
-| `src/constants.ts` | Add `RESEARCH_DIR = 'research'` | **MODIFIED** |
-| `src/state/meta.ts` | Add optional `researchRefs?: string[]` to WorkstreamMeta | **MODIFIED** |
-
-## Research Artifact Format
-
-Research files use YAML frontmatter + markdown body, matching the existing pattern in feature files and codebase map files. Reuses `parseFrontmatter`/`stringifyFrontmatter` from `src/roadmap/frontmatter.ts`.
-
-```markdown
----
-id: R-001
-topic: "Authentication patterns for Node.js CLI tools"
-status: draft
-createdAt: "2026-03-11T10:00:00Z"
-updatedAt: "2026-03-11T10:30:00Z"
-generator: branchos/research
-tags: ["auth", "security"]
----
-
-# Authentication Patterns for Node.js CLI Tools
-
-## Summary
-
-[High-level findings]
-
-## Key Findings
-
-[Detailed research results organized by subtopic]
-
-## Recommendations
-
-[Opinionated recommendations with rationale]
-
-## Sources
-
-[References consulted]
+ASSIGNEE SYNC:
+  sync-issues ──> for in-progress features ──> find workstream ──> read meta.assignee
+              ──> gh issue edit N --add-assignee <assignee>
 ```
 
-### Why This Format
+## New Modules
 
-- **YAML frontmatter**: Matches existing patterns. No new parsing logic needed.
-- **Markdown body**: Human-readable, git-diffable, works directly as Claude Code context.
-- **`id` field**: Auto-incremented `R-001`, `R-002`, matching feature ID pattern `F-001`.
-- **`status` field**: Two states only -- `draft` (in progress) and `complete` (finalized). Research is informal knowledge capture, not a tracked deliverable. A richer lifecycle would add ceremony without value.
-- **`tags` field**: Lightweight categorization for filtering when assembling context packets.
+### 1. `src/github/pr.ts` -- PR Creation
 
-### Research Index File
+Follows the existing `github/issues.ts` pattern: thin wrapper around `ghExec` with typed options/results.
 
-`.branchos/shared/research/index.json` provides fast lookups without scanning every file:
+```typescript
+import { ghExec } from './index.js';
 
-```json
-{
-  "schemaVersion": 1,
-  "nextId": 3,
-  "entries": [
-    { "id": "R-001", "topic": "Auth patterns", "status": "complete", "filename": "R-001-auth-patterns.md" },
-    { "id": "R-002", "topic": "Database options", "status": "draft", "filename": "R-002-database-options.md" }
-  ]
+export interface CreatePrOptions {
+  title: string;
+  body: string;
+  base?: string;    // defaults to repo default branch
+  draft?: boolean;
+  assignee?: string;
+}
+
+export interface CreatePrResult {
+  number: number;
+  url: string;
+}
+
+export async function createPr(opts: CreatePrOptions): Promise<CreatePrResult> {
+  const args = ['pr', 'create', '--title', opts.title];
+  // Use --body-file for large bodies (same pattern as createIssue)
+  // ...
+  if (opts.base) args.push('--base', opts.base);
+  if (opts.draft) args.push('--draft');
+  if (opts.assignee) args.push('--assignee', opts.assignee);
+  const stdout = await ghExec(args);
+  // Parse URL + PR number from stdout
 }
 ```
 
-**Why an index file when features don't have one:** The feature registry scans `F-*.md` files (currently `readAllFeatures` in `src/roadmap/feature-file.ts`). Research benefits from an index because the `/research` slash command needs to quickly show available topics during conversational flow, and a JSON index avoids parsing frontmatter from every file on each invocation.
+**Why a separate file:** Mirrors `issues.ts` / `milestones.ts` / `labels.ts` pattern. Each GitHub resource type gets its own module.
 
-## Architectural Patterns
-
-### Pattern 1: Bookend Slash Command (Conversational Research)
-
-**What:** Unlike existing slash commands which are single-shot (run, produce artifact, commit), the research command uses a "bookend" pattern -- it frames the start of a conversation and captures the end.
-
-**How it works within Claude Code constraints:** Slash commands are prompt templates executed by Claude Code, not interactive programs. The "conversation" happens naturally through Claude Code's multi-turn chat. The slash command provides initial context framing and instructions for how to conduct research, then the user converses normally. A subcommand invocation saves the findings.
-
-**Implementation:**
-
-```
-/branchos:research <topic>         -- Start or resume research session
-/branchos:research --save          -- Save current findings to artifact
-/branchos:research --list          -- List existing research topics
-/branchos:research --view R-001    -- View specific research
-```
-
-**Trade-offs:**
-- Pro: No custom interaction loop -- uses Claude Code's native conversation model
-- Pro: Research conversation benefits from Claude's full context and capabilities
-- Con: User must explicitly save (no auto-capture)
-- Con: If user forgets to save, research is lost (mitigated by being explicit in the slash command instructions)
-
-**Example slash command structure:**
-
-```markdown
----
-description: Conduct interactive domain research
-allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
----
-
-# Research
-
-## Parse arguments
-- If $ARGUMENTS is "--list": read index.json, display table, STOP
-- If $ARGUMENTS is "--view R-NNN": read that file, display, STOP
-- If $ARGUMENTS is "--save": [save flow]
-- Otherwise: $ARGUMENTS is the research topic
-
-## Start research session
-1. Read .branchos/shared/research/index.json (create if missing)
-2. Check if topic matches existing entry (resume vs new)
-3. If resuming: read existing file, present findings so far
-4. If new: allocate next ID from index
-
-## Conduct research
-Present yourself as a research assistant. Investigate the topic using:
-- Your training knowledge
-- Codebase context from .branchos/shared/codebase/
-- User's questions and clarifications
-
-Structure your research around: findings, recommendations, trade-offs.
-
-## When user says "save" or runs /branchos:research --save
-1. Compile findings into research artifact format
-2. Write to .branchos/shared/research/R-NNN-<slug>.md
-3. Update index.json
-4. Auto-commit
-
-$ARGUMENTS
-```
-
-### Pattern 2: Shared-First with Workstream References
-
-**What:** Research artifacts live in shared state. Workstreams hold references, not copies.
-
-**When to use:** Always for research. Research is reusable knowledge.
+### 2. `src/github/username.ts` -- GitHub Username Capture
 
 ```typescript
-// In WorkstreamMeta (src/state/meta.ts)
-export interface WorkstreamMeta {
-  // ... existing fields (unchanged) ...
-  researchRefs?: string[];  // e.g., ["R-001", "R-003"]
-}
-```
+import { ghExec } from './index.js';
 
-Workstreams link to research via `researchRefs`. This is set when:
-1. User creates a workstream with `--research R-001` flag
-2. User manually adds a reference later
-
-This matches how `featureId` already links workstreams to features -- optional pointer into shared state.
-
-### Pattern 3: Pure Context Assembly Extension
-
-**What:** Extend `AssemblyInput` interface with `researchContext: string | null`. The pure `assembleContext` function stays pure -- callers resolve data, the function assembles text.
-
-**This follows the existing pattern exactly.** Looking at `src/cli/context.ts`, the `contextHandler` reads files from disk, then passes string values to `assembleContext()`. Research follows the same path:
-
-```typescript
-// In src/context/assemble.ts
-
-// Extended AssemblyInput
-export interface AssemblyInput {
-  // ... all existing fields unchanged ...
-  researchContext: string | null;  // NEW: concatenated relevant research
-}
-
-// Extended STEP_SECTIONS
-const STEP_SECTIONS: Record<WorkflowStep, string[]> = {
-  discuss: ['featureContext', 'researchContext', 'architecture', 'conventions', 'decisions', 'branchDiff'],
-  plan: ['featureContext', 'researchContext', 'discuss', 'modules', 'conventions', 'decisions', 'branchDiff'],
-  execute: ['featureContext', 'plan', 'execute', 'branchDiff', 'decisions'],  // NO research in execute
-  fallback: ['featureContext', 'architecture', 'conventions', 'decisions', 'branchDiff', 'hint'],
-};
-```
-
-**Research context is included in `discuss` and `plan` steps but NOT `execute`.** By execution time, research findings should already be incorporated into the plan. This keeps execute context packets focused.
-
-**In `src/cli/context.ts` (contextHandler):**
-
-```typescript
-// After loading feature context (existing code around line 72-86)
-let researchContext: string | null = null;
-try {
-  const meta = await readMeta(metaPath);
-  if (meta.researchRefs && meta.researchRefs.length > 0) {
-    const researchDir = join(repoRoot, BRANCHOS_DIR, SHARED_DIR, RESEARCH_DIR);
-    const parts: string[] = [];
-    for (const refId of meta.researchRefs) {
-      const research = await readResearchById(researchDir, refId);
-      if (research) {
-        parts.push(`### ${research.topic}\n\n${research.body}`);
-      }
-    }
-    if (parts.length > 0) {
-      researchContext = parts.join('\n\n---\n\n');
-    }
+export async function getGitHubUsername(): Promise<string | null> {
+  try {
+    const stdout = await ghExec(['api', 'user', '--jq', '.login']);
+    return stdout.trim() || null;
+  } catch {
+    return null;
   }
-} catch {
-  // Research files missing/unreadable - proceed without
 }
 ```
 
-## New Source Files
+**Why `gh api user --jq '.login'` over `gh auth status`:** Returns structured data. Parsing `auth status` stderr is brittle and locale-dependent.
 
-```
-src/
-├── research/                  # NEW module
-│   ├── index.ts               # Barrel: export { readResearch, writeResearch, ... }
-│   ├── types.ts               # ResearchEntry, ResearchIndex, ResearchStatus
-│   ├── store.ts               # readResearch, writeResearch, readIndex, writeIndex, allocateId, readResearchById
-│   └── slug.ts                # topicToSlug() -- same pattern as roadmap/slug.ts
-├── context/
-│   └── assemble.ts            # MODIFIED: +researchContext in AssemblyInput, +researchContext in STEP_SECTIONS, +case in getSection
-├── cli/
-│   └── context.ts             # MODIFIED: load research files when meta.researchRefs exists
-├── commands/
-│   └── index.ts               # MODIFIED: add branchos:research.md to COMMANDS record
-├── constants.ts               # MODIFIED: add RESEARCH_DIR = 'research'
-└── state/
-    └── meta.ts                # MODIFIED: add optional researchRefs?: string[] to WorkstreamMeta
+### 3. `src/cli/create-pr.ts` -- PR Body Assembly & CLI Handler
 
-commands/
-└── branchos:research.md       # NEW slash command file
-```
+The heaviest new module. Assembles a PR body from workstream artifacts.
 
-### Structure Rationale
+```typescript
+export interface PrBodyParts {
+  featureTitle: string | null;
+  featureDescription: string | null;
+  acceptanceCriteria: string | null;  // GWT-formatted section from feature body
+  phaseSummaries: string[];           // from discuss/plan/execute .md files
+  linkedIssue: number | null;
+  branchDiffStat: string | null;
+}
 
-- **`src/research/`**: Follows existing module-per-domain pattern (`prfaq/`, `roadmap/`, `phase/`, `map/`). Each domain gets its own directory.
-- **Reuse `frontmatter.ts`**: The existing hand-rolled YAML frontmatter parser at `src/roadmap/frontmatter.ts` handles reading/writing research files. Import it -- do not duplicate.
-- **Reuse slug pattern**: The `src/roadmap/slug.ts` converts titles to filenames. Research needs the same for topic-to-filename. Either import directly or extract to a shared utility if the slug logic is identical.
+export function buildPrBody(parts: PrBodyParts): string {
+  // Deterministic markdown assembly:
+  // ## Description
+  // [feature description]
+  //
+  // ## Acceptance Criteria
+  // [GWT blocks]
+  //
+  // ## Changes
+  // [diff stat]
+  //
+  // ## Phase Summaries
+  // [discuss/plan/execute highlights]
+  //
+  // Closes #N
+}
 
-## Data Flow
-
-### Research Creation Flow
-
-```
-User: /branchos:research "authentication patterns for CLI tools"
-    |
-    v
-Slash command reads $ARGUMENTS, identifies topic
-    |
-    v
-Read .branchos/shared/research/index.json
-    |-- Exists with matching topic? Resume: read existing file, present for continuation
-    |-- New topic? Allocate next ID (R-003), create draft skeleton
-    |
-    v
-Claude Code conducts conversational research
-(user asks questions, Claude investigates, back-and-forth in normal chat)
-    |
-    v
-User: /branchos:research --save  (or says "save the research")
-    |
-    v
-Compile findings into research artifact format
-Write to .branchos/shared/research/R-003-auth-patterns-cli.md
-Update index.json (add entry, increment nextId)
-    |
-    v
-git add .branchos/shared/research/ && git commit
+export async function createPrHandler(options: CreatePrCliOptions): Promise<CreatePrResult> {
+  // 1. ensureWorkstream() → workstream ID + path
+  // 2. readMeta() → featureId, assignee, issueNumber
+  // 3. If featureId: readFeatureFile() → description, body (contains GWT)
+  // 4. Read phase artifacts (discuss.md, plan.md, execute.md)
+  // 5. git.getDiffStat() → changed files
+  // 6. buildPrBody() → assembled markdown
+  // 7. Derive title: feature title or branch name
+  // 8. createPr() with body, assignee, "Closes #N" if issue linked
+}
 ```
 
-### Research Consumption Flow (Context Packets)
+**Key design decision:** `buildPrBody` is a pure function (no I/O) for testability, following the `assembleContext` pattern. The handler gathers data, the builder formats it.
 
-```
-User: /branchos:context  (or /branchos:discuss-phase)
-    |
-    v
-contextHandler() loads workstream meta.json
-    |-- meta.researchRefs = ["R-001"]? Load those research files from shared/research/
-    |-- meta.researchRefs absent or empty? Skip research context
-    |
-    v
-assembleContext() receives researchContext: string | null
-    |-- step is 'discuss' or 'plan'? Include "Research" section
-    |-- step is 'execute'? Skip (research already baked into plan)
-    |
-    v
-Context packet output includes:
-  ## Research
-  ### Auth Patterns for CLI Tools
-  [findings from R-001]
-```
+### 4. `src/roadmap/gwt.ts` -- GWT Formatting Helper
 
-### Research Consumption Flow (Discuss/Plan Phases)
+```typescript
+export interface GwtScenario {
+  name: string;
+  given: string;
+  when: string;
+  then: string;
+}
 
-```
-User: /branchos:discuss-phase "implement user authentication"
-    |
-    v
-Slash command gathers context (existing behavior unchanged)
-    |
-    v
-ENHANCED: Slash command instructions say to also check
-.branchos/shared/research/ for topically relevant research
-    |-- Read index.json, scan topics for relevance
-    |-- Include relevant findings as additional context in discuss.md
-    |
-    v
-Generated discuss.md includes:
-  ## Related Research
-  See R-001 (Auth Patterns) for domain research on this topic.
-  Key findings: [summary from research artifact]
+export function formatGwtSection(scenarios: GwtScenario[]): string {
+  // Formats as markdown:
+  // **Scenario: [name]**
+  // - **Given** [given]
+  // - **When** [when]
+  // - **Then** [then]
+}
+
+export function parseGwtFromBody(body: string): GwtScenario[] {
+  // Extracts structured GWT from markdown body
+  // Used by create-pr to separate acceptance criteria from description
+}
+
+export function validateGwtSection(body: string): { valid: boolean; issues: string[] } {
+  // Checks if acceptance criteria section uses GWT format
+}
 ```
 
-## Integration Points (Detailed)
+### 5. `commands/branchos:create-pr.md` -- Slash Command
 
-### New Components -> Existing Code
+New slash command following the bookend pattern. The command:
+1. Calls `branchos create-pr --preview` to show assembled PR body
+2. Presents to user for review/editing
+3. On confirmation, calls `branchos create-pr` to actually create
+4. Reports PR URL
 
-| New Component | Depends On (Existing) | Integration Method |
-|---------------|----------------------|-------------------|
-| `research/store.ts` | `roadmap/frontmatter.ts` | Import `parseFrontmatter`/`stringifyFrontmatter` |
-| `research/slug.ts` | `roadmap/slug.ts` | Import or copy slug algorithm |
-| `research/store.ts` | `constants.ts` | Import `BRANCHOS_DIR`, `SHARED_DIR`, new `RESEARCH_DIR` |
-| `branchos:research.md` | `commands/index.ts` | Added to `COMMANDS` record |
+## Existing Modules That Need Modification
 
-### Existing Code -> New Components (Modifications)
+### 1. `src/state/meta.ts` -- Add `assignee` and `issueNumber` Fields
 
-| Existing File | What Changes | Backward Compatible? |
-|---------------|-------------|---------------------|
-| `src/constants.ts` | Add `export const RESEARCH_DIR = 'research';` | Yes -- additive |
-| `src/state/meta.ts` | Add `researchRefs?: string[]` to `WorkstreamMeta` interface | Yes -- optional field, undefined in existing files |
-| `src/context/assemble.ts` | Add `researchContext: string \| null` to `AssemblyInput`, add `'researchContext'` to discuss/plan in `STEP_SECTIONS`, add case in `getSection()` | Yes -- callers pass null, existing packets unchanged |
-| `src/cli/context.ts` | After feature context loading, add research context loading block | Yes -- only activates when researchRefs present |
-| `src/commands/index.ts` | Add import + entry for `branchos:research.md` | Yes -- additive |
+**Current:** `WorkstreamMeta` has `workstreamId`, `branch`, `status`, `createdAt`, `updatedAt`, `featureId?`.
 
-### What Does NOT Change
+**Change:**
 
-| Component | Why Unchanged |
-|-----------|--------------|
-| `src/state/schema.ts` | `researchRefs` is optional on WorkstreamMeta -- no migration needed |
-| `src/state/state.ts` | WorkstreamState (phases, tasks) is unaffected by research |
-| `src/phase/index.ts` | Phase lifecycle (discuss/plan/execute) unchanged |
-| `src/roadmap/*` | Feature registry, roadmap parsing unchanged |
-| `src/prfaq/*` | PR-FAQ ingestion unchanged |
-| `src/github/*` | GitHub issues sync unchanged |
-| `src/map/*` | Codebase map unchanged |
-| `src/git/*` | Git operations unchanged |
-| All existing slash commands | Research is additive, existing commands work as before |
+```typescript
+export interface WorkstreamMeta {
+  schemaVersion: number;
+  workstreamId: string;
+  branch: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+  featureId?: string;
+  assignee?: string;      // NEW: GitHub username of developer
+  issueNumber?: number;   // NEW: linked issue (for --issue flow, independent of feature)
+}
+```
+
+**Schema migration approach:** Both fields are optional. Existing meta.json files work as-is because `migrateIfNeeded` preserves unknown fields via spread. Bump `CURRENT_SCHEMA_VERSION` to 3 with a no-op migration (just version bump) for clarity.
+
+**Do NOT change `createMeta` signature.** Instead, set new fields after creation:
+
+```typescript
+const meta = createMeta(workstreamId, branch, featureId);
+meta.assignee = await getGitHubUsername() ?? undefined;
+if (issueNumber) meta.issueNumber = issueNumber;
+await writeMeta(metaPath, meta);
+```
+
+This avoids touching the 8+ existing call sites and tests that use the current signature.
+
+### 2. `src/state/schema.ts` -- v2 to v3 Migration
+
+```typescript
+export const CURRENT_SCHEMA_VERSION = 3;
+
+// Add to migrations array:
+{
+  fromVersion: 2,
+  migrate: (data) => ({
+    ...data,
+    schemaVersion: 3,
+    // No-op: assignee and issueNumber are optional, absent = undefined
+  }),
+}
+```
+
+### 3. `src/workstream/create.ts` -- Add Issue-Linked Flow
+
+**Current:** Two paths -- standard (branch-derived) and `--feature`.
+
+**Change:** Add third path for `--issue`. All three paths also gain auto-assignee capture.
+
+```
+createWorkstream(options) {
+  if (options.issueNumber) → createIssueLinkedWorkstream(...)  // NEW
+  if (options.featureId)   → createFeatureLinkedWorkstream(...) // EXISTING
+  else                     → standard flow                      // EXISTING
+  // ALL paths: capture assignee
+}
+```
+
+**Issue-linked flow logic:**
+
+1. Call `viewIssue(N)` via new function in `github/issues.ts` to get title + body
+2. Check if issue was created by `sync-issues` (title pattern: `[F-NNN] ...`)
+3. If yes: extract feature ID, delegate to existing `createFeatureLinkedWorkstream`
+4. If no: create standard workstream, store `issueNumber` in meta.json
+5. All paths: call `getGitHubUsername()`, store as `meta.assignee`
+
+### 4. `src/cli/workstream.ts` -- Add `--issue` Flag
+
+Add `.option('--issue <number>', 'Link to GitHub issue by number')` to create subcommand. Parse as integer, pass to `createWorkstream`.
+
+### 5. `src/github/issues.ts` -- Add `viewIssue` and `assignIssue`
+
+```typescript
+export interface IssueView {
+  number: number;
+  title: string;
+  body: string;
+  labels: string[];
+}
+
+export async function viewIssue(issueNumber: number): Promise<IssueView> {
+  const stdout = await ghExec([
+    'issue', 'view', String(issueNumber),
+    '--json', 'number,title,body,labels',
+  ]);
+  return JSON.parse(stdout);
+}
+
+export async function assignIssue(issueNumber: number, assignee: string): Promise<void> {
+  await ghExec(['issue', 'edit', String(issueNumber), '--add-assignee', assignee]);
+}
+```
+
+Also extend `UpdateIssueOptions` with `assignee?: string` so existing `updateIssue` can set assignees during sync.
+
+### 6. `src/cli/sync-issues.ts` -- Assignee Sync
+
+**Change:** When processing features with `status: 'in-progress'` and a non-null `workstream` field, look up the workstream's `meta.json` for `assignee`. If present, pass to `updateIssue`.
+
+This requires a new import of `readMeta` and reading workstream directories -- a new dependency, but natural since the data needs to flow from workstream metadata to GitHub.
+
+### 7. `src/cli/context.ts` -- Issue Number in Feature Context
+
+**Change:** Add `issue` to `formatFeatureContext` table:
+
+```typescript
+function formatFeatureContext(feature: Feature): string {
+  const header = [
+    // ...existing rows...
+    feature.issue ? `| Issue | #${feature.issue} |` : null,
+  ].filter(Boolean).join('\n');
+  // ...
+}
+```
+
+### 8. `src/commands/index.ts` -- Register New Command
+
+Import and add `branchos:create-pr.md` to `COMMANDS` record.
+
+### 9. `src/cli/index.ts` -- Register New CLI Command
+
+Import and register `create-pr` CLI command handler.
+
+## Patterns to Follow
+
+### Pattern 1: Thin GitHub Wrappers
+
+**What:** Each GitHub resource (issues, PRs, milestones, labels) gets a file in `src/github/` wrapping `ghExec` with typed options/results.
+
+**When:** Any new GitHub API interaction.
+
+**Why:** Consistent with existing `issues.ts`, `milestones.ts`, `labels.ts`. Safe (argument arrays via `execFile`, no shell injection). Testable (mock `ghExec`).
+
+### Pattern 2: Feature Body as Freeform Markdown (GWT lives here)
+
+**What:** Acceptance criteria in GWT format live in the feature file body under an `## Acceptance Criteria` section heading, not in frontmatter fields.
+
+**When:** Adding structured content to features.
+
+**Why:** The body already flows into context packets via `formatFeatureContext`. No frontmatter schema changes needed. GWT is a formatting convention within markdown, not a data structure. The `plan-roadmap` slash command generates the body -- that is where GWT format gets enforced.
+
+```markdown
+## Acceptance Criteria
+
+**Scenario: User creates PR from workstream**
+- **Given** a workstream linked to feature F-003
+- **When** the user runs `/branchos:create-pr`
+- **Then** a GitHub PR is created with feature description and acceptance criteria in the body
+```
+
+### Pattern 3: Optional Fields with Graceful Degradation
+
+**What:** New metadata fields (`assignee`, `issueNumber`) are optional. All code paths handle their absence.
+
+**When:** Extending existing data structures.
+
+**Why:** Backward compatibility. Existing workstreams without these fields continue working. Matches how `featureId` was added in v2.0. No migration complexity.
+
+### Pattern 4: Pure Body Assembly
+
+**What:** `buildPrBody()` is a pure function that takes data in and returns markdown out. No I/O.
+
+**When:** Assembling output from multiple sources.
+
+**Why:** Follows the `assembleContext()` pattern exactly. The handler gathers data, the builder formats it. Easy to test with fixtures.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Research in Workstream State
+### Anti-Pattern 1: Parsing `gh` stderr for Data
 
-**What people do:** Store research artifacts under `.branchos/workstreams/<id>/research/` because "this workstream triggered it."
-**Why it is wrong:** Research is domain knowledge, not task state. Another developer on a different workstream needs the same auth research. Duplicating it defeats the shared knowledge model that the entire architecture is built on.
-**Do this instead:** Always write to `.branchos/shared/research/`. Link from workstream via `researchRefs` in `meta.json`.
+**What:** Using `gh auth status` stderr output to extract username.
 
-### Anti-Pattern 2: Building a Custom REPL
+**Why bad:** Output format is not stable. Breaks on locale changes, format updates.
 
-**What people do:** Implement an interactive loop within the slash command, managing conversation state, turn tracking, and response formatting.
-**Why it is wrong:** Claude Code already IS the conversation runtime. A slash command is a prompt template, not a program. Building conversation management duplicates what Claude Code provides natively and creates fragile code.
-**Do this instead:** Use the "bookend" pattern. The slash command frames the start (loads context, identifies topic). The user converses normally. A second invocation (`--save`) persists findings.
+**Instead:** Use `gh api user --jq '.login'` for structured JSON extraction.
 
-### Anti-Pattern 3: Dumping All Research Into Context
+### Anti-Pattern 2: Storing GWT in Frontmatter
 
-**What people do:** Load every research file into the context packet because "more context is better."
-**Why it is wrong:** Context window is finite. Irrelevant research dilutes signal. A workstream about database optimization does not need auth research.
-**Do this instead:** Only include research explicitly referenced by the workstream (`researchRefs` in meta). If no refs, include nothing. Let the user be intentional about which research is relevant.
+**What:** Adding `givenWhenThen` as a frontmatter array field.
 
-### Anti-Pattern 4: Complex Research Status Lifecycle
+**Why bad:** Frontmatter is flat key-value. GWT scenarios are multi-line and nested. The hand-rolled parser does not handle YAML arrays. Adding that complexity gains nothing over markdown body.
 
-**What people do:** Create `draft -> reviewing -> approved -> published -> archived -> deprecated` status lifecycle.
-**Why it is wrong:** Research is informal knowledge capture, not a governed deliverable. Over-engineering the lifecycle adds ceremony without value and creates state management burden.
-**Do this instead:** Two statuses: `draft` and `complete`. That is it.
+**Instead:** Keep GWT in feature body. Convention over schema.
 
-### Anti-Pattern 5: Auto-Saving Research from Conversation
+### Anti-Pattern 3: Breaking `createMeta` Signature
 
-**What people do:** Try to intercept or parse the Claude Code conversation to auto-extract research findings.
-**Why it is wrong:** Claude Code conversations are not programmatically accessible from slash commands. There is no API to read conversation history. Even if there were, auto-extraction would be unreliable.
-**Do this instead:** Explicit save. The slash command instructs Claude to compile findings when asked. The user triggers this intentionally.
+**What:** Changing `createMeta(id, branch, featureId?)` to take an options object.
 
-## Schema Migration: Not Required
+**Why bad:** 8+ existing call sites and tests depend on positional args.
 
-The `WorkstreamMeta` interface gains `researchRefs?: string[]`. Because this field is optional (TypeScript `?`), existing `meta.json` files without it work perfectly -- `meta.researchRefs` evaluates to `undefined`, and context assembly skips research loading (the `if (meta.researchRefs && meta.researchRefs.length > 0)` guard handles this).
+**Instead:** Set new fields on the returned meta object before writing. The meta is mutable before `writeMeta()` is called.
 
-Similarly, `AssemblyInput` gains `researchContext: string | null`. Callers that do not resolve research pass `null`, and `assembleContext` skips it via the existing `if (key === 'researchContext' && !input.researchContext) continue;` pattern (same as `featureContext`).
+### Anti-Pattern 4: PR Body Assembly in Slash Command
 
-**No schema version bump is needed.** No migration function is needed. This is a key advantage of using optional fields -- zero migration cost.
+**What:** Having the slash command markdown contain the PR body template logic.
+
+**Why bad:** Untestable. Claude would assemble the body from instructions, producing non-deterministic output.
+
+**Instead:** CLI `create-pr` command assembles the body deterministically via `buildPrBody()`. The slash command calls the CLI and lets the user review before creating.
+
+### Anti-Pattern 5: Requiring `gh` for Non-GitHub Features
+
+**What:** Making GWT acceptance criteria or context assembly depend on GitHub being available.
+
+**Why bad:** GWT formatting and context packets should work offline and without GitHub auth.
+
+**Instead:** GitHub-dependent features (PR creation, assignee capture, issue linking) degrade gracefully. GWT formatting is pure string manipulation. Context assembly is pure function.
 
 ## Suggested Build Order
 
-Based on dependency analysis, respecting what must exist before what can be built:
+Build order driven by dependency analysis. Each phase independently shippable and testable.
 
-### Step 1: Research Types and Store (no dependencies on existing code changes)
+### Phase 1: GWT Acceptance Criteria Format
 
-New files only. Foundation that everything else builds on.
+**Deps:** None. Zero dependencies on other features.
 
-- `src/research/types.ts` -- `ResearchEntry`, `ResearchIndex`, `ResearchStatus` types
-- `src/research/store.ts` -- `readResearch()`, `writeResearch()`, `readIndex()`, `writeIndex()`, `allocateId()`, `readResearchById()`
-- `src/research/slug.ts` -- `topicToSlug()` function
-- `src/research/index.ts` -- barrel export
-- `src/constants.ts` -- add `RESEARCH_DIR` constant
-- Unit tests for all of the above
+**Why first:** Required by create-pr (Phase 4) for meaningful PR bodies. Can be validated independently.
 
-### Step 2: Slash Command (depends on Step 1 for types/store)
+| Action | File | Type |
+|--------|------|------|
+| Create GWT formatting/parsing helper | `src/roadmap/gwt.ts` | NEW |
+| Update plan-roadmap instructions for GWT format | `commands/branchos:plan-roadmap.md` | MODIFY |
+| Add issue number to feature context table | `src/cli/context.ts` | MODIFY |
+| Tests | `tests/roadmap/gwt.test.ts` | NEW |
 
-- `commands/branchos:research.md` -- the full slash command prompt with argument parsing, research flow, and save flow
-- `src/commands/index.ts` -- add to `COMMANDS` record
-- Manual testing of the slash command in Claude Code
+### Phase 2: Automatic Assignee Capture
 
-### Step 3: Context Assembly Integration (depends on Step 1 for store)
+**Deps:** None. Self-contained.
 
-- `src/context/assemble.ts` -- add `researchContext` to `AssemblyInput`, add to `STEP_SECTIONS`, add `getSection` case
-- `src/cli/context.ts` -- load research files when workstream has `researchRefs`
-- `src/state/meta.ts` -- add optional `researchRefs` to `WorkstreamMeta`
-- Update existing context assembly tests (add `researchContext: null` to all existing test inputs)
+**Why second:** Establishes assignee data that Phase 4 (create-pr, sync-issues assignee) consumes.
 
-### Step 4: Cross-Command Integration (depends on Steps 2 and 3)
+| Action | File | Type |
+|--------|------|------|
+| GitHub username capture | `src/github/username.ts` | NEW |
+| Add `assignee?`, `issueNumber?` to WorkstreamMeta | `src/state/meta.ts` | MODIFY |
+| Bump schema version to 3 | `src/state/schema.ts` | MODIFY |
+| Auto-capture assignee on all creation paths | `src/workstream/create.ts` | MODIFY |
+| Tests | `tests/github/username.test.ts`, `tests/state/meta.test.ts` | NEW/MODIFY |
 
-- Update `commands/branchos:discuss-phase.md` to mention checking shared research for relevant context
-- Update `commands/branchos:plan-phase.md` similarly
-- Update `commands/branchos:create-workstream.md` to support `--research R-001` flag
-- Integration tests verifying research flows through to context packets
+### Phase 3: Issue-Linked Workstream Creation
+
+**Deps:** Phase 2 (needs assignee field in meta, username capture).
+
+**Why third:** Provides `--issue` flag that feeds into PR creation. Links workstreams to GitHub issues bidirectionally.
+
+| Action | File | Type |
+|--------|------|------|
+| Add `viewIssue` function | `src/github/issues.ts` | MODIFY |
+| Add issue-linked creation path | `src/workstream/create.ts` | MODIFY |
+| Add `--issue` CLI flag | `src/cli/workstream.ts` | MODIFY |
+| Update slash command docs | `commands/branchos:create-workstream.md` | MODIFY |
+| Tests | `tests/workstream/create.test.ts` | MODIFY |
+
+### Phase 4: Create-PR Command & Assignee Sync
+
+**Deps:** Phases 1 + 2 + 3 (GWT for body, assignee for assignment, issue for "Closes #N").
+
+**Why last:** Depends on all prior phases. Culminating feature that ties everything together.
+
+| Action | File | Type |
+|--------|------|------|
+| PR creation wrapper | `src/github/pr.ts` | NEW |
+| PR body assembly + handler | `src/cli/create-pr.ts` | NEW |
+| Slash command | `commands/branchos:create-pr.md` | NEW |
+| Register command | `src/commands/index.ts` | MODIFY |
+| Register CLI command | `src/cli/index.ts` | MODIFY |
+| Add `assignee` to `updateIssue` | `src/github/issues.ts` | MODIFY |
+| Assignee sync during issue sync | `src/cli/sync-issues.ts` | MODIFY |
+| Tests | `tests/github/pr.test.ts`, `tests/cli/create-pr.test.ts` | NEW |
+
+### Phase Ordering Rationale
+
+```
+Phase 1 (GWT)  ─────────────────────────────────────┐
+Phase 2 (Assignee) ──> Phase 3 (Issue-linked) ──────┤──> Phase 4 (Create-PR + Sync)
+```
+
+- Phases 1 and 2 are independent and could be built in parallel
+- Phase 3 depends on Phase 2 (meta fields + username capture)
+- Phase 4 depends on all three (GWT for body, assignee for PR, issue for "Closes #N")
+
+## Complete File Impact Summary
+
+### New Files (7)
+
+| File | Purpose |
+|------|---------|
+| `src/github/pr.ts` | Thin `gh pr create` wrapper |
+| `src/github/username.ts` | `gh api user` username capture |
+| `src/cli/create-pr.ts` | PR body assembly and CLI handler |
+| `src/roadmap/gwt.ts` | GWT format/parse/validate helper |
+| `commands/branchos:create-pr.md` | Slash command for PR creation |
+| `tests/github/pr.test.ts` | PR creation tests |
+| `tests/roadmap/gwt.test.ts` | GWT helper tests |
+
+### Modified Files (11)
+
+| File | What Changes |
+|------|-------------|
+| `src/state/meta.ts` | Add `assignee?`, `issueNumber?` to `WorkstreamMeta` |
+| `src/state/schema.ts` | Bump to v3, add no-op v2->v3 migration |
+| `src/workstream/create.ts` | Add issue-linked path, auto-capture assignee |
+| `src/cli/workstream.ts` | Add `--issue` flag |
+| `src/github/issues.ts` | Add `viewIssue`, `assignIssue`, `assignee` in `updateIssue` |
+| `src/cli/sync-issues.ts` | Set assignee during sync |
+| `src/cli/context.ts` | Add issue number to feature context table |
+| `src/commands/index.ts` | Register `branchos:create-pr.md` |
+| `src/cli/index.ts` | Register `create-pr` CLI command |
+| `commands/branchos:create-workstream.md` | Document `--issue` flag |
+| `commands/branchos:plan-roadmap.md` | Add GWT generation instructions |
+
+### Unchanged (everything else)
+
+Context assembly (`src/context/assemble.ts`) needs NO changes. Feature body already flows through. GWT is a formatting convention in the body, not a new context field.
+
+Feature types (`src/roadmap/types.ts`) need NO changes. No new frontmatter fields. The `body` field already holds acceptance criteria as markdown.
+
+Frontmatter parser (`src/roadmap/frontmatter.ts`) needs NO changes. No new frontmatter fields to parse.
 
 ## Sources
 
 - Direct analysis of `src/context/assemble.ts` -- AssemblyInput interface, STEP_SECTIONS map, getSection switch (HIGH confidence)
-- Direct analysis of `src/cli/context.ts` -- contextHandler data loading pattern, featureContext loading as reference pattern (HIGH confidence)
-- Direct analysis of `src/state/meta.ts` -- WorkstreamMeta interface, optional field pattern (HIGH confidence)
-- Direct analysis of `src/roadmap/frontmatter.ts` -- parseFrontmatter/stringifyFrontmatter reuse (HIGH confidence)
-- Direct analysis of `src/roadmap/feature-file.ts` -- feature file read/write pattern as reference (HIGH confidence)
-- Direct analysis of `src/state/schema.ts` -- migration system, schema version handling (HIGH confidence)
-- Direct analysis of `src/constants.ts` -- constant naming pattern (HIGH confidence)
-- Direct analysis of `commands/branchos:discuss-phase.md` -- slash command structure pattern (HIGH confidence)
-- Project context from `.planning/PROJECT.md` -- v2.1 milestone goals (HIGH confidence)
+- Direct analysis of `src/workstream/create.ts` -- createWorkstream flow, createFeatureLinkedWorkstream pattern (HIGH confidence)
+- Direct analysis of `src/state/meta.ts` -- WorkstreamMeta interface, createMeta signature (HIGH confidence)
+- Direct analysis of `src/github/issues.ts` -- createIssue/updateIssue patterns, ghExec usage (HIGH confidence)
+- Direct analysis of `src/github/index.ts` -- ghExec wrapper, checkGhAvailable pattern (HIGH confidence)
+- Direct analysis of `src/cli/sync-issues.ts` -- syncIssuesHandler flow, feature iteration, auto-commit pattern (HIGH confidence)
+- Direct analysis of `src/cli/context.ts` -- contextHandler data loading, formatFeatureContext, research loading (HIGH confidence)
+- Direct analysis of `src/roadmap/types.ts` -- Feature/FeatureFrontmatter interfaces (HIGH confidence)
+- Direct analysis of `src/roadmap/frontmatter.ts` -- generic frontmatter parse/stringify pattern (HIGH confidence)
+- Direct analysis of `src/state/schema.ts` -- migration chain pattern (HIGH confidence)
+- Direct analysis of `src/cli/workstream.ts` -- Commander option pattern (HIGH confidence)
+- Direct analysis of `src/commands/index.ts` -- command registration pattern (HIGH confidence)
+- `gh` CLI capabilities: `gh pr create`, `gh api user`, `gh issue view --json` are stable, well-documented commands (HIGH confidence)
+- Project context from `.planning/PROJECT.md` -- v2.2 milestone goals and requirements (HIGH confidence)
 
 ---
-*Architecture research for: BranchOS v2.1 Interactive Research Integration*
-*Researched: 2026-03-11*
+*Architecture research for: BranchOS v2.2 PR Workflow & Developer Experience*
+*Researched: 2026-03-13*

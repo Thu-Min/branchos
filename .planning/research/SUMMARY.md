@@ -1,154 +1,168 @@
 # Project Research Summary
 
-**Project:** BranchOS v2.1 -- Interactive Research Slash Commands
-**Domain:** Conversational research integration for CLI-first AI development workflow tool
-**Researched:** 2026-03-11
+**Project:** BranchOS v2.2 - PR Workflow & Developer Experience
+**Domain:** CLI-based PR automation, structured acceptance criteria, issue-linked workstreams
+**Researched:** 2026-03-13
 **Confidence:** HIGH
 
 ## Executive Summary
 
-BranchOS v2.1 adds interactive research capabilities as a pre-planning step in the workflow. The central insight from research is that this feature requires zero new dependencies. Claude Code itself is the research engine -- it has built-in WebSearch and WebFetch tools, handles multi-turn conversation natively, and executes slash command instructions. BranchOS's job is narrow: frame the research question with codebase context, let the developer converse with Claude, and persist the structured findings as git-committed markdown artifacts in `.branchos/shared/research/`. This builds entirely on proven v2.0 patterns: hand-rolled frontmatter parsing, file-based state tracking, shared storage for cross-workstream knowledge, and slash commands as the UX layer.
+BranchOS v2.2 adds four interconnected capabilities: automated PR creation from workstream artifacts, Given/When/Then acceptance criteria in feature files, issue-linked workstream creation (`--issue #N`), and automatic GitHub assignee tracking. The research unanimously confirms that zero new npm dependencies are needed. All GitHub interactions use the existing `gh` CLI via `ghExec`/`execFile`, and GWT parsing is a ~40-line hand-rolled parser -- consistent with the project's zero-dependency philosophy established in v2.0 and v2.1.
 
-The recommended approach is a "bookend" slash command pattern. The `/branchos:research` command loads existing context and frames the research topic at the start of a conversation. The developer and Claude have a natural back-and-forth. A second invocation (`--save`) compiles and persists findings. Research artifacts use the same YAML frontmatter + markdown body format as feature files, stored in `.branchos/shared/research/` with an `index.json` for fast lookups. Workstreams link to research via optional `researchRefs` in meta.json, and context assembly includes research in discuss and plan steps but excludes it from execute (where research should already be baked into the plan).
+The recommended approach builds these features in four phases ordered by dependency: GWT parsing and assignee capture first (independent, foundational), then issue-linked workstreams (needs assignee infrastructure), then the PR creation command that ties everything together. The architecture research confirms all features integrate into existing module boundaries -- no new layers or structural changes are needed. New code follows proven patterns: thin `ghExec` wrappers in `src/github/`, pure assembly functions for testability, optional metadata fields with graceful degradation.
 
-The primary risks are: (1) context window bloat from unbounded research artifacts -- mitigate by including only summaries in context packets with a size budget, not raw findings; (2) scope creep turning a simple research capture tool into a general-purpose research platform -- mitigate with a hard "out of scope" list before coding; and (3) confusion between research and discuss-phase commands that serve adjacent purposes -- mitigate by anchoring research in shared state (project/feature-level) while discuss stays in workstream state (phase-level). All risks have clear architectural prevention strategies.
+The primary risks are well-understood and preventable. Always use `--body-file` for PR bodies (markdown corruption via shell args is the top pitfall). Check for existing PRs before creating (duplicate PRs are inevitable without idempotency). Never let GitHub API calls block workstream creation (username capture must be best-effort). Keep GWT format optional, not mandatory -- support plain checklists for technical features that do not fit behavioral scenarios. The existing schema migration system handles the v2-to-v3 meta.json transition cleanly.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies. The existing BranchOS stack handles everything needed for v2.1. See [STACK.md](./STACK.md) for full details.
+No new runtime or dev dependencies. The entire v2.2 feature set is built with the existing stack: Commander, simple-git, chalk, and the `gh` CLI. The `gh` CLI moves from optional (sync-issues only) to required for PR and assignee features, but the existing `checkGhAvailable()` gate already handles detection and error messaging. See [STACK.md](./STACK.md) for full details.
 
-**Core technologies (all existing):**
-- **Node.js built-ins** (`fs`, `path`, `crypto`): Research file I/O and slug generation -- already used throughout v2.0
-- **simple-git**: Auto-commit research artifacts -- same pattern as discuss/plan/execute commits
-- **Hand-rolled frontmatter parser** (`src/roadmap/frontmatter.ts`): Parse/write research YAML frontmatter -- proven, zero-dep, consistent with feature files
-- **Claude Code WebSearch/WebFetch**: Web research capability -- built-in tools declared via `allowed-tools` in slash command, no BranchOS code needed
+**Core tools used:**
+- `gh pr create`: PR creation with `--body-file`, `--assignee`, `--base`, `--head` flags
+- `gh issue view --json`: Fetch issue details for `--issue #N` flow
+- `gh issue edit --add-assignee`: Set assignees during sync-issues
+- `gh api user --jq .login`: Capture authenticated GitHub username
+- Hand-rolled GWT parser (~40 LOC): Extract Given/When/Then from feature body markdown
 
-**Deliberately excluded:** inquirer/prompts (Claude Code IS the interaction layer), axios/node-fetch (WebFetch handles it), gray-matter (hand-rolled parser is proven and sufficient), cheerio/puppeteer (WebFetch handles scraping), langchain/AI SDKs (Claude Code IS the AI), any database, any search library, any markdown renderer.
+**Deliberately excluded:** `@cucumber/gherkin` (massive overkill for 4-keyword detection), `@octokit/rest` (duplicates `gh` CLI infrastructure), `gray-matter` (hand-rolled parser is proven), any markdown AST parser, any prompting library.
 
 ### Expected Features
 
-See [FEATURES.md](./FEATURES.md) for full analysis including prior art comparison.
+See [FEATURES.md](./FEATURES.md) for full analysis including feature specifications and dependency graph.
 
-**Must have (v2.1 core):**
-- `/branchos:research` slash command -- conversational research entry point with topic argument
-- Persistent research artifacts in `.branchos/shared/research/` with structured frontmatter
-- Research context in downstream commands -- discuss-phase and plan-phase consume research findings
-- Research listing -- see existing research topics, dates, and linked features/milestones
-- Multi-topic research -- separate files per topic, not a monolithic dump
+**Must have (table stakes):**
+- PR body includes feature description, linked issue (`Closes #N`), and acceptance criteria
+- PR auto-assigned to workstream creator
+- PR targets correct base branch
+- GWT acceptance criteria in feature files (with freeform fallback)
+- Workstream creation from issue number (`--issue #N`)
+- Issue assignee synced from workstream metadata
 
-**Should have (v2.1 differentiators):**
-- Feature/milestone linking -- `--feature F-003` or `--milestone M2` associates research with planning artifacts
-- Codebase-aware research -- loads ARCHITECTURE.md, STACK.md, CONVENTIONS.md for grounded recommendations
-- Conversational flow -- developer guides research direction interactively, unlike single-shot approaches in GSD/RIPER
+**Should have (differentiators):**
+- PR body assembled from phase artifacts (discuss/plan/execute summaries) -- the killer feature; no other tool builds PR body from structured planning artifacts
+- GWT criteria rendered as checkboxes in PR body for reviewer verification
+- Branch diff summary in PR body
+- Dry-run/preview mode before PR creation
+- Idempotent PR creation (detect existing PR, offer update instead of duplicate)
 
-**Defer (v2.2+):**
-- Research staleness detection (commit-based, like codebase map)
-- Research diffing on update
-- Bulk research import from external documents
-- Parallel sub-agent research spawning
+**Defer (beyond v2.2):**
+- Auto-merge, bidirectional issue sync, multi-PR per workstream, PR review tracking, Cucumber step generation from GWT, rich media in PR body
 
 ### Architecture Approach
 
-The architecture extends v2.0's shared state layer with a new `research/` directory. Research is domain knowledge (shared), not task state (workstream-scoped). Workstreams hold references (`researchRefs` in meta.json), not copies. Context assembly gains a `researchContext` field included in discuss and plan steps only. No schema migration is needed -- all changes use optional fields. See [ARCHITECTURE.md](./ARCHITECTURE.md) for component diagram and data flows.
+All features extend existing modules without structural changes. New files follow established patterns: `github/pr.ts` mirrors `github/issues.ts`, `roadmap/gwt.ts` mirrors `roadmap/frontmatter.ts`, and `cli/create-pr.ts` follows the pure-function assembly pattern from `context/assemble.ts`. The key design constraint is that `buildPrBody()` must be a pure function (data in, markdown out) with the handler gathering data separately. See [ARCHITECTURE.md](./ARCHITECTURE.md) for component diagram and data flows.
 
-**Major components:**
-1. **`src/research/` module** (NEW) -- types, store (read/write/index), slug conversion; follows existing module-per-domain pattern
-2. **`commands/branchos:research.md`** (NEW) -- bookend slash command with argument parsing for topic, --save, --list, --view modes
-3. **`src/context/assemble.ts`** (MODIFIED) -- adds `researchContext: string | null` to AssemblyInput, includes in discuss/plan STEP_SECTIONS
-4. **`src/state/meta.ts`** (MODIFIED) -- adds optional `researchRefs?: string[]` to WorkstreamMeta
+**New modules (7 files):**
+1. `src/github/pr.ts` -- thin `gh pr create` wrapper
+2. `src/github/username.ts` -- GitHub username capture via `gh api user`
+3. `src/cli/create-pr.ts` -- PR body assembly (pure function) and CLI handler
+4. `src/roadmap/gwt.ts` -- GWT format/parse/validate helper
+5. `commands/branchos:create-pr.md` -- slash command for PR creation
+6. `tests/github/pr.test.ts` and `tests/roadmap/gwt.test.ts` -- test files
+
+**Modified modules (11 files):**
+- `state/meta.ts` + `state/schema.ts`: optional `assignee` and `issueNumber` fields, v2-to-v3 migration
+- `workstream/create.ts`: `--issue` flow and auto-assignee capture
+- `github/issues.ts`: `viewIssue` and `assignIssue` functions
+- `cli/sync-issues.ts`: assignee sync during issue create/update
+- Registration and documentation files (5 files)
 
 ### Critical Pitfalls
 
 See [PITFALLS.md](./PITFALLS.md) for full analysis with warning signs and recovery strategies.
 
-1. **Context window bloat from accumulated research** -- Only inject summary-level content into context packets with a hard size budget (~4000 tokens). Raw findings stay in files with a "see full research in .branchos/..." pointer. Design the summary layer into storage from day one.
-2. **Over-engineering into a state machine** -- Use artifact-driven tracking (file presence + frontmatter status), not a multi-step lifecycle. Two statuses only: `draft` and `complete`. No transition guards.
-3. **Scope creep into a research platform** -- Define research as "structured conversation that produces planning-ready artifacts." Hard out-of-scope list: no custom web search, no citation management, no cross-project sharing, no domain-specific templates.
-4. **Confusion between research and discuss-phase** -- Research is project/feature-level (shared state). Discuss is workstream/phase-level (workstream state). Research produces findings; discuss makes decisions informed by findings. Reinforce through storage location and command framing.
-5. **Conversation continuity failure across sessions** -- Design for artifact-based continuity, not conversation memory. Research files must be self-contained with question-finding pairs so a new Claude session can read and continue meaningfully.
-6. **Git history bloat from iterative research** -- Commit only at session boundaries (explicit save), not on every file write. Target 1-2 commits per research session maximum.
+1. **PR body markdown corruption** -- Always use `--body-file`, never `--body` flag. Backticks, pipes, and newlines in assembled PR bodies break when passed as shell arguments. Make `--body-file` the default from day one, not a size-threshold fallback.
+2. **Duplicate PR creation** -- Check for existing PRs on the branch before creating (`gh pr list --head <branch>`). Store PR number in meta after creation. Developers will run the command multiple times; this is not an edge case.
+3. **GWT breaking existing feature files** -- Parse GWT from body markdown via `## Acceptance Criteria` heading convention. Do NOT add to frontmatter (the single-line YAML parser cannot handle multi-line values). Do NOT auto-migrate existing files; support freeform fallback.
+4. **GitHub username capture blocking workstream creation** -- Wrap in try/catch, return null on failure, never block. The `createWorkstream` function currently has zero GitHub dependencies; do not introduce a hard one.
+5. **Assignee setting fails silently** -- Pre-validate assignee via `gh api /repos/.../assignees/<username>` before setting. Add failures to warnings array (existing sync-issues pattern), never abort the sync.
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+Based on dependency analysis across all four research files, the features decompose into four phases.
 
-### Phase 1: Research Types, Store, and Storage Design
-**Rationale:** Foundation that everything else builds on. Must get the storage schema right (including summary separation) because retrofitting a summary layer is painful. No dependencies on existing code changes -- all new files.
-**Delivers:** `src/research/types.ts`, `src/research/store.ts`, `src/research/slug.ts`, `src/research/index.ts`, `RESEARCH_DIR` constant, `index.json` schema, unit tests for all
-**Addresses:** Persistent research artifacts (table stakes), multi-topic research (table stakes)
-**Avoids:** Context bloat (Pitfall 1) by designing summary separation into storage from the start; over-engineered state machine (Pitfall 2) by using simple `draft`/`complete` status
+### Phase 1: GWT Acceptance Criteria Format
+**Rationale:** Zero dependencies on other v2.2 features. Required by Phase 4 for meaningful PR bodies. Can be validated and shipped independently.
+**Delivers:** `src/roadmap/gwt.ts` (parser/formatter), updated plan-roadmap instructions for GWT generation, issue number in feature context table.
+**Addresses:** GWT acceptance criteria parsing (table stakes), backward-compatible body extraction, both GWT and checklist format support.
+**Avoids:** Feature file parsing breakage (Pitfall 2) by using body-parsing convention, not frontmatter. Context bloat (Pitfall 10) by extracting and truncating criteria separately from description.
 
-### Phase 2: Research Slash Command
-**Rationale:** Depends on Phase 1 for types and store. This is the user-facing entry point. Must get the bookend pattern right -- framing the start, using Claude Code's native conversation, and capturing findings on explicit save.
-**Delivers:** `commands/branchos:research.md` slash command, registration in `src/commands/index.ts`, support for topic, --save, --list, --view modes
-**Addresses:** Research slash command (table stakes), conversational flow (differentiator), codebase-aware research (differentiator), research listing (table stakes)
-**Avoids:** Scope creep (Pitfall 3) by keeping the slash command under 150 lines with a clear "out of scope" boundary; conversation continuity failure (Pitfall 5) by instructing Claude to read existing artifacts first; git bloat (Pitfall 6) by committing only on explicit save
+### Phase 2: Automatic Assignee Capture
+**Rationale:** Self-contained, foundational for Phases 3 and 4. Establishes the assignee data model that PR creation and sync-issues consume.
+**Delivers:** `src/github/username.ts`, `assignee` and `issueNumber` optional fields in WorkstreamMeta, schema v2-to-v3 migration.
+**Addresses:** Auto-capture GitHub username (table stakes), graceful degradation without `gh`, backward-compatible schema migration.
+**Avoids:** Blocking workstream creation (Pitfall 3) by making capture best-effort. Schema migration omission (Pitfall 7) by writing migration alongside meta changes.
 
-### Phase 3: Context Assembly Integration
-**Rationale:** Depends on Phase 1 for store/read functions. This is what makes research valuable -- without it, research artifacts are isolated files that developers must manually reference. The whole point of integrated research is that findings flow into downstream commands.
-**Delivers:** `researchContext` in `AssemblyInput`, research in discuss/plan STEP_SECTIONS, `researchRefs` in WorkstreamMeta, research loading in `contextHandler`
-**Addresses:** Research context in downstream commands (table stakes), feature/milestone linking (differentiator)
-**Avoids:** Context bloat (Pitfall 1) by loading only referenced research summaries, not all files; research-discuss confusion (Pitfall 4) by keeping research in shared state and including it as input context, not replacing discuss output
+### Phase 3: Issue-Linked Workstream Creation
+**Rationale:** Depends on Phase 2 (meta fields, username capture). Provides the `--issue` flag that feeds into PR body's `Closes #N`.
+**Delivers:** `--issue #N` flag on create-workstream, `viewIssue` function, issue-to-feature reverse lookup via feature registry scan.
+**Addresses:** Issue-linked workstream creation (table stakes), auto-feature-linking from issue title pattern, graceful fallback for unlinked issues.
+**Avoids:** Invalid issue handling (Pitfall 4) by stripping `#` prefix, validating via `gh`, and providing clear error messages.
 
-### Phase 4: Cross-Command Integration and Polish
-**Rationale:** Depends on Phases 2 and 3. Updates existing slash commands to be research-aware. Validates the end-to-end flow from research through discuss to plan.
-**Delivers:** Updated discuss-phase command (checks shared research for relevant context), updated plan-phase command (similarly), `--research R-001` flag on workstream creation, integration tests for full research-to-context pipeline
-**Addresses:** Research linked to features (differentiator), team-visible research (differentiator), end-to-end workflow validation
-**Avoids:** "Looks done but isn't" gap where research command works but discuss-phase never surfaces it; feature linkage gaps where workstreams cannot reference research
+### Phase 4: Create-PR Command and Assignee Sync
+**Rationale:** Depends on all prior phases -- GWT for checklist rendering, assignee for PR assignment, issue number for `Closes #N`. This is the culminating feature that ties the v2.2 milestone together.
+**Delivers:** `src/github/pr.ts`, `src/cli/create-pr.ts`, `commands/branchos:create-pr.md` slash command, assignee sync in sync-issues, idempotent PR creation with update support.
+**Addresses:** PR creation with rich body (table stakes + killer differentiator), assignee on both PRs and issues, phase artifact summaries in PR body.
+**Avoids:** Markdown corruption (Pitfall 1) by using `--body-file` exclusively. Duplicate PRs (Pitfall 5) by checking `gh pr list --head <branch>` before creating. Scope creep (Pitfall 9) by keeping create-pr focused on PR creation only -- no feature status updates, no archival.
 
 ### Phase Ordering Rationale
 
-- **Dependency chain is linear:** Types/store -> slash command -> context integration -> cross-command updates. Each phase produces artifacts the next phase consumes.
-- **Value delivery is progressive:** After Phase 2, developers can conduct and persist research. After Phase 3, research flows into context packets. After Phase 4, the entire workflow is research-aware.
-- **Risk is front-loaded:** The hardest design decision (storage schema with summary separation) is Phase 1. Getting this wrong forces rework in all subsequent phases. Getting it right means Phases 2-4 are straightforward extensions of proven patterns.
-- **Scope is intentionally small:** Four phases, estimated 4-6 development sessions total. Zero new dependencies. This is a feature addition, not an architectural overhaul.
+- Phases 1 and 2 are independent and can be built in parallel -- no dependencies between them
+- Phase 3 depends on Phase 2 (needs `issueNumber` meta field and username capture)
+- Phase 4 depends on all three (GWT for body, assignee for `--assignee` flag, issue for `Closes #N`)
+- Each phase is independently shippable and testable
+- This ordering is consistent across all four research files -- FEATURES.md, ARCHITECTURE.md, and PITFALLS.md all converge on the same dependency graph
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 2 (Slash Command):** The bookend pattern is novel for BranchOS. Needs careful prompt engineering for the slash command instructions -- how to frame research, how to instruct Claude to use codebase context, and how to handle the save flow. Worth a focused design session.
+Phases with standard patterns (skip `/gsd:research-phase`):
+- **Phase 1 (GWT):** Simple string parsing, well-documented format, no external dependencies. Follows hand-rolled parser precedent.
+- **Phase 2 (Assignee):** Single API call + optional field addition. Schema migration follows existing v0-v1-v2 chain.
+- **Phase 3 (Issue-linked):** `gh issue view --json` is well-documented. Feature lookup is array filter on existing data.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Types/Store):** Direct replication of feature registry patterns (`src/roadmap/feature-file.ts`). Types, file I/O, frontmatter parsing -- all proven.
-- **Phase 3 (Context Assembly):** Extending `AssemblyInput` and `STEP_SECTIONS` follows the exact pattern used for `featureContext`. The codebase demonstrates the approach.
-- **Phase 4 (Cross-Command):** Updating slash command markdown files to check for research. Straightforward additions to existing Step 3 (Gather context) in discuss/plan commands.
+Phases that may benefit from research during planning:
+- **Phase 4 (Create-PR):** Most complex phase. PR body assembly from multiple artifact sources, idempotency logic (check existing PR, then create vs. update via `gh pr edit`), slash command UX flow (preview, confirm, create), and branch-push-before-create logic. Worth a focused research pass on `gh pr edit` and `gh pr list` flags.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Zero new dependencies. All capabilities exist in the current stack or in Claude Code's built-in tools. Sources are direct codebase analysis. |
-| Features | MEDIUM-HIGH | Feature set is clear from prior art analysis (GSD, RIPER, Research-Plan-Implement). The conversational flow differentiator relies on Claude Code's native capabilities, which are well-documented. Minor uncertainty: optimal research artifact structure may need iteration after real usage. |
-| Architecture | HIGH | Based entirely on direct codebase analysis of v2.0 source. All integration points verified against actual code. No new architectural patterns -- extends existing shared-state and context-assembly patterns. |
-| Pitfalls | HIGH | Pitfalls derived from codebase analysis, slash command architecture constraints, and v2.0 experience. Prevention strategies are concrete and testable. |
+| Stack | HIGH | Zero new dependencies. All `gh` CLI flags verified against official documentation. |
+| Features | HIGH | Features well-scoped, build entirely on existing infrastructure. Clear dependency graph with no ambiguity. |
+| Architecture | HIGH | Based on direct codebase analysis of v2.1 source. All integration points mapped to specific files and functions. |
+| Pitfalls | HIGH | Sourced from codebase analysis, gh CLI issue tracker, and known platform behavior. All pitfalls have concrete prevention strategies with recovery costs assessed. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Research summary extraction strategy:** PITFALLS.md flags context bloat as critical, and the mitigation is a summary layer. The exact mechanism (separate summary section within the file vs. separate summary file) should be decided during Phase 1 planning. Recommendation: embedded `## Summary` section at the top of each research file, extracted by context assembly.
-- **WebSearch/WebFetch availability:** These Claude Code tools depend on the user's plan and configuration. The slash command must degrade gracefully when unavailable. Phase 2 should include fallback instructions in the prompt ("if web search is not available, proceed with training knowledge and note the limitation").
-- **Research artifact size guidelines:** No hard data on optimal research file size for context assembly. PITFALLS.md suggests 200 lines max per file. Validate during Phase 2 by testing context packets with varying research sizes.
-- **Optimal slash command prompt length:** The research command is more complex than existing commands (multiple modes, codebase context loading, save flow). PITFALLS.md warns against exceeding 150 lines in the slash command markdown. Phase 2 planning should include a prompt design pass.
+- **PR update flow:** Research confirms `gh pr edit` exists but the exact flags for updating body and title were not deeply investigated. Verify during Phase 4 planning.
+- **Assignee pre-validation API:** The `GET /repos/{owner}/{repo}/assignees/{username}` endpoint returns 204/404 -- confirm this works through `gh api` during Phase 4 implementation.
+- **GWT detection heuristic:** The research recommends supporting both GWT and plain checklists. The exact detection logic (how to distinguish GWT scenarios from regular list items) needs specification during Phase 1 planning.
+- **Branch push automation:** Pitfall 11 notes that `gh pr create` requires the branch on the remote. The create-pr flow should auto-push, but the exact UX (silent push vs. confirmation) needs a decision during Phase 4.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- BranchOS v2.0 source code: `src/context/assemble.ts`, `src/cli/context.ts`, `src/state/meta.ts`, `src/roadmap/frontmatter.ts`, `src/roadmap/feature-file.ts`, `src/state/schema.ts`, `src/constants.ts`, `src/commands/index.ts`, `commands/branchos:discuss-phase.md`
-- BranchOS PROJECT.md: v2.1 milestone definition, architectural constraints, key decisions
-- Claude Code documentation: WebSearch, WebFetch built-in tools, slash command `allowed-tools`, `$ARGUMENTS` support
+- [gh pr create - Official CLI Manual](https://cli.github.com/manual/gh_pr_create)
+- [gh issue view - Official CLI Manual](https://cli.github.com/manual/gh_issue_view)
+- [gh issue edit - Official CLI Manual](https://cli.github.com/manual/gh_issue_edit)
+- [gh api user - GitHub REST API Docs](https://docs.github.com/en/rest/users/users)
+- [REST API for Issue Assignees](https://docs.github.com/en/rest/issues/assignees)
+- Direct BranchOS v2.1 codebase analysis (all src/ modules referenced in ARCHITECTURE.md and PITFALLS.md)
+- BranchOS PROJECT.md (v2.2 milestone definition and architectural constraints)
 
 ### Secondary (MEDIUM confidence)
-- [GSD (Get Shit Done)](https://github.com/gsd-build/get-shit-done) -- research phase implementation with parallel sub-agents, artifact format
-- [RIPER-5 for Claude Code](https://github.com/tony/claude-code-riper-5) -- research phase as read-only codebase exploration
-- [Research-Plan-Implement Framework](https://github.com/brilliantconsultingdev/claude-research-plan-implement) -- parallel research agents, persistent findings
-- [GSD Workflow Analysis](https://www.codecentric.de/en/knowledge-hub/blog/the-anatomy-of-claude-code-workflows-turning-slash-commands-into-an-ai-development-system) -- slash command orchestration patterns
+- [Gherkin acceptance criteria guides](https://testquality.com/gherkin-user-stories-acceptance-criteria-guide/) -- GWT format best practices
+- [GitHub PR template best practices](https://graphite.com/guides/comprehensive-checklist-github-pr-template) -- PR body structure
+- [When to use GWT acceptance criteria](https://www.ranorex.com/blog/given-when-then-tests/) -- GWT applicability limits
+- [Acceptance criteria best practices](https://www.altexsoft.com/blog/acceptance-criteria-purposes-formats-and-best-practices/) -- industry overview
 
-### Tertiary (LOW confidence)
-- None -- all findings corroborated by direct codebase analysis or multiple external sources
+### Tertiary (needs validation)
+- gh CLI issue tracker discussions on [duplicate PR creation](https://github.com/cli/cli/discussions/5792), [assignee permission failures](https://github.com/cli/cli/issues/9620), and [multiline body handling](https://github.com/cli/cli/issues/595) -- informed pitfall identification but exact current behavior should be verified during implementation
 
 ---
-*Research completed: 2026-03-11*
+*Research completed: 2026-03-13*
 *Ready for roadmap: yes*

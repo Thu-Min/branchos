@@ -1,218 +1,303 @@
-# Feature Landscape: Interactive Research Slash Commands
+# Feature Landscape: PR Workflow & Developer Experience
 
-**Domain:** Conversational research workflows for AI-assisted development tools
-**Researched:** 2026-03-11
-**Confidence:** MEDIUM-HIGH
-**Scope:** NEW v2.1 features only. All v2.0 features (PR-FAQ, roadmap, features, sync, workstreams) are shipped.
+**Domain:** CLI-based PR creation, structured acceptance criteria, issue-linked workstreams, automatic assignee tracking
+**Researched:** 2026-03-13
+**Confidence:** HIGH
+**Scope:** NEW v2.2 features only. All v2.0/v2.1 features (PR-FAQ, roadmap, features, sync, research, workstreams) are shipped.
 
 ## Table Stakes
 
-Features developers expect from a research command integrated into an existing planning workflow. Missing these means the research step feels bolted-on rather than native.
+Features that users of a PR workflow tool expect. Missing these means the feature feels half-baked.
 
-| Feature | Why Expected | Complexity | Depends On (existing) |
-|---------|--------------|------------|----------------------|
-| Research slash command (`/branchos:research`) | Every comparable system (GSD, RIPER, Research-Plan-Implement) provides a research entry point. Without a dedicated command, developers default to unstructured chat, losing artifacts. | LOW | Slash command infrastructure (exists) |
-| Persistent research artifacts | GSD writes RESEARCH.md. RIPER stores in memory-bank. Research-Plan-Implement saves to `thoughts/shared/research/`. Developers expect research findings to survive the session and be referenceable later. Ephemeral research is useless for team coordination. | MEDIUM | `.branchos/shared/` storage layer (exists) |
-| Research context in downstream commands | RIPER and GSD both feed research findings into planning phases. If `/branchos:discuss-phase` and `/branchos:plan-phase` cannot see prior research, developers will re-explain findings manually -- defeating the purpose. | MEDIUM | Context packet assembly (exists), discuss-phase/plan-phase commands (exist) |
-| Structured output format | All prior art produces structured sections (libraries found, patterns to follow, pitfalls to avoid, stack recommendations). Unstructured prose is hard to scan and hard for AI to consume downstream. | LOW | None |
-| Multi-topic research within a project | Projects need research on different domains (e.g., "auth libraries" and "real-time sync patterns"). A single monolithic research artifact per project is insufficient. Developers expect to create multiple research documents scoped to topics. | LOW | None |
+| Feature | Why Expected | Complexity | Depends On (existing) | Notes |
+|---------|--------------|------------|----------------------|-------|
+| PR body includes feature description | Reviewers need context about what the PR implements | Low | Feature registry (exists) | Pull from feature file body directly |
+| PR body includes linked issue reference | Standard GitHub workflow; `Closes #N` auto-closes on merge | Low | GitHub Issues sync (exists) | Use `Closes #N` keyword syntax for auto-close |
+| PR body includes acceptance criteria | Reviewers need to know what "done" looks like | Low | Feature files with AC (exists, freeform) | Format depends on GWT migration |
+| PR title derived from feature/workstream | Saves developer from typing; consistent naming | Low | Workstream meta (exists) | Pattern: `[F-001] Feature title` matching issue title convention |
+| PR auto-assigned to workstream creator | Developer who did the work should own the PR | Low | GitHub username in meta (NEW) | Uses `gh pr create --assignee` |
+| PR targets correct base branch | PRs must target main/develop, not random branches | Low | Git operations (exists) | Default to repo default branch; allow override |
+| Issue assignee synced from workstream | When someone picks up work, the issue should reflect it | Med | Username capture (NEW), sync-issues (exists) | Add `--add-assignee` to existing sync flow |
+| GWT acceptance criteria in feature files | Structured criteria are testable; freeform is ambiguous | Med | Feature file parser (exists) | Migration from freeform to GWT format |
+| Workstream creation from issue number | Developers discover work via GitHub Issues, not feature files | Med | GitHub Issues sync (exists), feature registry (exists) | Reverse lookup: issue number to feature to workstream |
 
 ## Differentiators
 
-Features that set BranchOS research apart from GSD, RIPER, and ad-hoc approaches.
+Features that set BranchOS apart from manual `gh pr create`. Not expected, but make the tool genuinely valuable.
 
-| Feature | Value Proposition | Complexity | Depends On (existing) |
-|---------|-------------------|------------|----------------------|
-| Conversational research flow | GSD's research phase is a single-shot agent spawn -- user triggers it, agent runs, produces artifact. RIPER is also single-pass. BranchOS can offer a conversational back-and-forth where the developer guides the research direction interactively within the slash command session. Claude Code's interactive mode already supports multi-turn conversation; the slash command provides structured guidance without constraining the interaction. | LOW | Claude Code interactive mode (exists natively) |
-| Research linked to features | No prior art connects research artifacts to specific features in a registry. BranchOS can link research to a feature ID (`--feature F-003`), so when a workstream is created for that feature, its research is automatically included in context packets. This closes the gap between "we researched this" and "the developer implementing it has the research." | MEDIUM | Feature registry (exists), feature-aware workstreams (exist) |
-| Research linked to milestones | Similar to feature linking, but at milestone scope. A single research document can inform all features in a milestone. Useful for cross-cutting concerns like "what auth library for all M2 features." | LOW | ROADMAP.md milestone structure (exists) |
-| Codebase-aware research | BranchOS already has a codebase map (ARCHITECTURE.md, MODULES.md, CONVENTIONS.md, STACK.md). Research can reference the existing stack and conventions, producing recommendations that are contextual rather than generic. No competitor does this -- GSD and RIPER research in a vacuum. | MEDIUM | Codebase map (exists) |
-| Research staleness detection | Like BranchOS's codebase map staleness detection (commit-based), research artifacts can track when they were created relative to the codebase. If significant changes have occurred since research was done, flag it as potentially stale. | LOW | Staleness detection pattern (exists in map-status) |
-| Team-visible research (git-committed) | Research artifacts committed to git mean the whole team sees domain research, not just the developer who ran the command. PR-reviewable research -- team can challenge assumptions before planning begins. Consistent with BranchOS's "all artifacts in git" principle. | LOW | Git commit pattern (exists in all commands) |
+| Feature | Value Proposition | Complexity | Depends On (existing) | Notes |
+|---------|-------------------|------------|----------------------|-------|
+| PR body assembled from phase artifacts | Includes discuss summary, plan, execution notes -- real context, not just template boilerplate | Med | Context assembly (exists), phase artifacts (exists) | This is the killer feature. No other tool builds PR body from structured planning artifacts |
+| GWT criteria rendered as checklist in PR body | Reviewers can check off acceptance criteria directly in GitHub PR UI | Low | GWT in feature files (NEW) | Render `- [ ] Given X, When Y, Then Z` as markdown checkboxes |
+| Branch diff summary in PR body | Shows files changed with stats, gives reviewer quick scope | Low | Git diff (exists in context assembly) | Reuse `branchDiffStat` from context assembly |
+| PR body includes research references | Links to research that informed the implementation | Low | Research system (exists) | Only if feature has `researchRefs` |
+| Confirmation flow before PR creation | Show assembled PR body, let developer edit before submitting | Low | Slash command UX patterns (exists) | Essential for trust -- never submit without review |
+| Dry-run mode for PR creation | Preview what would be created without hitting GitHub API | Low | Pattern exists in sync-issues | Consistent with existing `--dry-run` convention |
+| `--issue #N` reverse-links to feature | Creates workstream and links feature in one step from issue number | Med | Feature registry, GitHub Issues sync | `gh issue view --json` to fetch issue, match to feature by issue number field |
+| Auto-capture GitHub username on workstream creation | Zero-config; `gh api /user` captures login automatically | Low | gh CLI availability check (exists) | Store in meta.json as `assignee` field |
+| GWT criteria in context packets for execute phase | AI assistant sees structured acceptance criteria during implementation | Low | Context assembly (exists), GWT parser (NEW) | Helps Claude Code write code that satisfies specific criteria |
 
 ## Anti-Features
 
-Features that seem natural but should be explicitly avoided.
+Features to explicitly NOT build for v2.2.
 
-| Anti-Feature | Why Requested | Why Problematic | Alternative |
-|--------------|---------------|-----------------|-------------|
-| Autonomous web research agent | "Let the AI search the web and compile findings automatically" | Claude Code slash commands run in the user's terminal session. Web search requires tool access (WebSearch, WebFetch) which may not be available or permitted. Autonomous research without user guidance produces generic, low-quality findings. The developer should guide the research direction. | Conversational flow where the developer asks questions and Claude investigates using available tools. Developer steers; AI assists. |
-| Research database / search index | "Let me search across all past research with full-text search" | Overengineered for the use case. Research artifacts are markdown files -- `grep` works. Adding a search index adds complexity without proportional value for 2-5 developer teams. | Simple file listing with topic-based naming. Grep for content search. |
-| Auto-trigger research before planning | "Automatically run research when a discuss-phase starts" | Removes developer agency. Not all features need research (standard CRUD, well-known patterns). Forced research wastes time and clutters artifacts. GSD explicitly notes research should be skipped for "standard web development, well-documented patterns, simple integrations." | Optional `--research` flag on discuss-phase, or explicit `/branchos:research` before discuss. Developer decides. |
-| Research templates per domain | "Have different research templates for frontend, backend, infra, etc." | Template proliferation. Maintaining multiple templates adds burden without clear benefit. A single flexible structure covers most needs. | One research output format with optional sections. Sections that don't apply are simply omitted. |
-| Parallel sub-agent research spawning | "Spawn multiple research agents like GSD does" | GSD spawns sub-agents because it operates in a full orchestration context. BranchOS slash commands run in a single Claude Code session. Sub-agent spawning requires the Claude Code Task tool or similar, adding architectural complexity. Single-session research is simpler and keeps the developer in the loop. | Single-session conversational research. Developer can run `/branchos:research` multiple times for different topics. |
-| Research approval workflow | "Research should be reviewed and approved before planning" | Adds process overhead. Research is informational, not prescriptive. The review gate is at the plan stage (plan-phase artifacts are committed to git and PR-reviewed). Research is the developer's domain exploration -- requiring approval slows exploration. | Git-committed artifacts are visible to the team. If research seems off, team discusses during plan review. |
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Auto-merge after PR creation | Dangerous; removes human review gate | Create PR as regular or draft; merge is always manual |
+| PR template file in `.github/` | BranchOS assembles PR body dynamically from artifacts; static templates conflict with this | Generate body programmatically, pass via `--body-file` |
+| Bidirectional issue sync (GitHub to BranchOS) | Explicitly out of scope per PROJECT.md; adds webhook/polling complexity | One-way sync remains: BranchOS to GitHub. `--issue #N` is a one-time pull, not ongoing sync |
+| Multi-PR per workstream | One workstream = one branch = one PR. Multi-PR adds state complexity | If work splits, create separate workstreams |
+| PR review/approval tracking | GitHub already tracks this; duplicating state creates drift | Use `gh pr status` or GitHub UI for review state |
+| Automatic workstream creation from issues | Removes developer agency per PROJECT.md out-of-scope list | `--issue #N` is explicit; developer chooses when to start work |
+| Cucumber/step definition generation from GWT | GWT is for human-readable acceptance criteria, not test automation | Keep GWT as structured documentation; tests are separate concern |
+| Rich PR body with screenshots/media | CLI tool; no way to capture screenshots programmatically | Text-based sections only; developer can add media after PR creation |
+| PR status webhooks/notifications | Requires server component; BranchOS is CLI-only | Developer checks PR status via `gh pr status` |
+
+## Feature Specification Details
+
+### 1. `/branchos:create-pr` Slash Command
+
+**What it does:** Assembles a PR body from workstream artifacts and creates a GitHub PR via `gh pr create`.
+
+**Recommended PR Body Structure:**
+
+```markdown
+## Summary
+
+[Feature description from feature file body]
+
+## Changes
+
+[Phase summaries: what was discussed, planned, and executed -- pulled from phase artifacts]
+
+## Acceptance Criteria
+
+- [ ] Given [precondition], When [action], Then [expected result]
+- [ ] Given [precondition], When [action], Then [expected result]
+
+## Files Changed
+
+[Branch diff stat summary: N files changed, insertions, deletions]
+
+## Linked Issue
+
+Closes #[issue number]
+
+---
+*Created with [BranchOS](https://github.com/Thu-Min/branchos)*
+```
+
+**Why this structure works:**
+- **Summary** gives reviewers immediate context about what was built and why (from feature description)
+- **Changes** is the killer differentiator -- it pulls from actual planning artifacts (discuss/plan/execute markdown), not just commit messages. No other tool does this.
+- **Acceptance Criteria** as checkboxes lets reviewers verify completeness directly in the GitHub PR UI by ticking boxes
+- **Files Changed** gives quick scope assessment without opening the diff tab
+- `Closes #N` triggers GitHub auto-close on merge, completing the lifecycle
+- Footer attributes the PR to BranchOS for discoverability
+
+**Implementation approach:**
+- New pure function `assemblePrBody(workstreamMeta, feature, phases, diffStat)` -- no I/O, testable. Follows existing `assembleContext` pattern.
+- Slash command orchestrates: load context, assemble body, show to developer for confirmation, call `gh pr create`
+- Uses `--body-file` for the body (matches existing pattern in `createIssue` for large bodies)
+- Uses `--assignee` from meta.json's `assignee` field
+- Uses `--base` targeting repo default branch
+- Confirmation step: display assembled body, ask developer to confirm or edit before submitting
+- Graceful handling: if no feature linked, omit acceptance criteria section. If no phases completed, omit changes section.
+
+**gh pr create flags used:**
+- `--title "[F-001] Feature title"` -- consistent with issue title convention
+- `--body-file <tempfile>` -- for potentially large bodies
+- `--assignee <username>` -- from meta.json
+- `--base main` -- or repo default branch
+- `--head <current-branch>` -- explicit for safety
+
+**Confidence:** HIGH -- `gh pr create` flags are well-documented and stable. Pure function pattern is proven in codebase.
+
+### 2. Given/When/Then Acceptance Criteria
+
+**What it does:** Migrates freeform acceptance criteria in feature files to structured GWT (Gherkin-lite) format.
+
+**Format in feature files:**
+
+```markdown
+## Acceptance Criteria
+
+- Given a workstream linked to feature F-001
+  When the developer runs /branchos:create-pr
+  Then a GitHub PR is created with the feature description in the body
+
+- Given a feature file with GWT acceptance criteria
+  When the PR body is assembled
+  Then each criterion appears as a checkbox item
+```
+
+**Why GWT over freeform:**
+- **Testable:** each criterion has a clear pass/fail condition
+- **Consistent:** Given sets context, When defines action, Then defines observable outcome
+- **Parseable:** structured format can be extracted and rendered as PR body checklist
+- **Industry standard:** over 60% of agile teams use BDD-style criteria (2024 World Quality Report)
+- **AI-friendly:** Claude Code can use structured criteria during execute phase to verify implementation
+
+**Best practices to encode in documentation:**
+- 1-5 criteria per feature (more suggests the feature should be split)
+- Each scenario is atomic and self-contained
+- Avoid vague qualifiers ("fast", "user-friendly") -- quantify or define specific outcomes
+- Given clause sets up preconditions and system state
+- When clause is a single user action
+- Then clause is a verifiable, observable outcome
+
+**Parsing approach:**
+- Detect GWT blocks within `## Acceptance Criteria` section: lines starting with `- Given` followed by indented `When` and `Then`
+- Store as structured data: `{ given: string, when: string, then: string }[]`
+- Render in PR body as checkboxes: `- [ ] Given X, When Y, Then Z`
+- Render in context packets as structured list (not checkboxes -- AI does not need to check boxes)
+- **Backward compatible:** if no GWT pattern detected, fall through to freeform rendering (preserves existing feature file behavior)
+
+**Migration path:** Feature files currently have freeform body text. The parser detects GWT patterns within `## Acceptance Criteria` if present, otherwise treats the body as freeform. No breaking change to existing features. `plan-roadmap` command should be updated to generate GWT-formatted criteria for new features.
+
+**Confidence:** HIGH -- GWT is a well-understood format. Parsing is straightforward string matching.
+
+### 3. Issue-Linked Workstream Creation (`--issue #N`)
+
+**What it does:** Creates a workstream from a GitHub issue number, pulling title/description and auto-linking to the matching feature.
+
+**Flow:**
+
+1. Developer runs `/branchos:create-workstream --issue 42`
+2. BranchOS calls `gh issue view 42 --json title,body,number` to fetch issue data
+3. Looks up feature by `issue` field in feature registry (`feature.issue === 42`)
+4. If feature found: creates feature-linked workstream (reuses existing `--feature` flow)
+5. If no feature match: creates standalone workstream with issue title as workstream context
+6. Stores `issueNumber: 42` in workstream meta.json
+
+**Why this matters:** Developers discover work through GitHub Issues (assigned to them, visible in project boards, notification emails). The current flow requires knowing the internal feature ID (`F-001`). `--issue #N` bridges GitHub's native UI to BranchOS's workstream model, meeting developers where they already are.
+
+**Edge cases:**
+- Issue not found (404): error with clear message ("Issue #42 not found. Check the issue number and ensure gh is authenticated.")
+- Issue exists but no matching feature: create standalone workstream, warn that no feature link was found. Store issue number anyway for PR body reference.
+- Issue matches feature already in-progress: same error as existing `--feature` flow ("Feature F-001 is already in-progress")
+- Multiple features referencing same issue: should not happen (1:1 mapping enforced by sync-issues), but pick first match and warn
+- `--issue` and `--feature` both provided: error ("Cannot specify both --issue and --feature")
+
+**Dependency:** Requires `gh` CLI available and authenticated (existing `checkGhAvailable` gate).
+
+**Confidence:** HIGH -- `gh issue view --json` is stable. Feature lookup by issue number is a simple array filter on existing data.
+
+### 4. Automatic GitHub Username Capture
+
+**What it does:** On workstream creation, automatically captures the authenticated GitHub username and stores it in workstream metadata.
+
+**Implementation:**
+
+1. During `createWorkstream()`, call `ghExec(['api', '/user', '--jq', '.login'])` to get username
+2. Store as `assignee` field in `meta.json`
+3. If `gh` not available or not authenticated: skip silently (graceful degradation -- username is optional)
+4. Username is used downstream for:
+   - PR `--assignee` flag in create-pr command
+   - Issue `--add-assignee` in sync-issues command
+
+**Meta.json schema extension:**
+
+```typescript
+export interface WorkstreamMeta {
+  schemaVersion: number;
+  workstreamId: string;
+  branch: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+  featureId?: string;
+  assignee?: string;     // NEW: GitHub login username
+  issueNumber?: number;  // NEW: linked GitHub issue number
+}
+```
+
+**Schema migration:** Both new fields are optional (undefined is the default). No schema version bump needed -- existing meta.json files work unchanged. New workstreams get the fields populated automatically.
+
+**Confidence:** HIGH -- `gh api /user` is stable and well-documented. Adding optional fields to meta.json is non-breaking.
+
+### 5. Assignee Tracking in sync-issues
+
+**What it does:** When `sync-issues` runs, if a feature has an in-progress workstream with an assignee, set that assignee on the GitHub issue.
+
+**Implementation changes to existing `syncIssuesHandler`:**
+
+1. Before processing each feature, check if it has a linked workstream (via `workstream` field)
+2. If workstream exists, read its meta.json to get `assignee` field
+3. Pass assignee to `createIssue` or `updateIssue` calls
+4. `createIssue` adds `--assignee <username>` flag
+5. `updateIssue` adds `--add-assignee <username>` flag
+6. Uses `gh issue edit <number> --add-assignee <username>`
+
+**Edge cases:**
+- Workstream has no assignee (gh not available when created): skip assignee setting, no error
+- User is not a collaborator on the repo: `gh issue edit --add-assignee` will fail. Catch the error and add to `warnings[]` array (matches existing error handling pattern in sync-issues)
+- Feature has no linked workstream: no assignee to set, skip
+- `@me` shorthand: NOT used. Store actual username to support team scenarios where one developer syncs issues for another developer's workstream
+
+**Confidence:** HIGH -- `gh issue edit --add-assignee` is documented. Warning-on-failure matches the existing error handling pattern already used throughout sync-issues.
 
 ## Feature Dependencies
 
 ```
-                    (existing) Codebase Map
-                         |
-                         v
-/branchos:research  ----uses----> Codebase context for grounded research
-       |
-       |--produces--> Research artifacts in .branchos/shared/research/
-       |
-       |--optional--> --feature F-NNN link
-       |                    |
-       |--optional--> --milestone M1 link
-       |
-       v
-Research in context packets
-       |
-       |--feeds--> /branchos:discuss-phase (research context available)
-       |--feeds--> /branchos:plan-phase (research context available)
-       |--feeds--> /branchos:context (research included when relevant)
+GitHub username capture ----+----> PR auto-assignment (create-pr uses assignee from meta)
+                            |
+                            +----> Issue assignee sync (sync-issues uses assignee from meta)
+
+GWT acceptance criteria ----+----> PR body assembly (renders GWT as checkboxes)
+                            |
+                            +----> Context packets (structured GWT in execute phase)
+
+Issue-linked workstream ---------> Requires GitHub Issues sync (issue numbers in feature files)
+
+PR body assembly ----------------> Requires feature registry + phase artifacts + git diff
 ```
 
-### Dependency Notes
-
-- **Research command has no hard dependencies on new features.** It uses existing infrastructure: slash command system, `.branchos/shared/` storage, git commit patterns, and optionally the codebase map.
-- **Context packet integration depends on research artifacts existing.** The `assembleContext` function needs to be extended to include research, but this is additive (not breaking).
-- **Feature/milestone linking is optional.** Research works standalone (general project research) or linked to specific features/milestones. Linking enhances context assembly but is not required.
-- **Staleness detection reuses existing pattern.** The `map-status` command already tracks commit-based staleness. Same approach applies to research artifacts.
+**Build order implication:**
+1. **First:** Username capture + GWT parser (no dependencies on each other, can be built in parallel)
+2. **Second:** PR body assembly function (needs GWT parser for checklist rendering)
+3. **Third:** `/branchos:create-pr` slash command (needs PR body assembly)
+4. **Parallel with above:** Issue-linked workstream + assignee sync in sync-issues (independent of PR creation)
 
 ## MVP Recommendation
 
-### Must Build (v2.1 Core)
+**Prioritize (table stakes + highest-value differentiator):**
 
-1. **`/branchos:research` slash command** -- Entry point for interactive research. Accepts topic as argument. Conversational flow: developer describes what they want to research, Claude investigates using codebase context and available tools, produces structured findings. Auto-commits artifact.
+1. **GitHub username auto-capture** -- foundational; needed by both PR and assignee features. Low complexity, high leverage.
+2. **GWT acceptance criteria parser** -- needed for structured PR body. Medium complexity but well-defined scope.
+3. **PR body assembly function** -- the core value proposition of v2.2. Pure function, testable, reuses existing patterns. Medium complexity.
+4. **`/branchos:create-pr` slash command** -- user-facing feature that ties everything together. Medium complexity.
+5. **Issue-linked workstream (`--issue #N`)** -- bridges GitHub UI to BranchOS. Medium complexity.
+6. **Assignee tracking in sync-issues** -- low complexity addition to existing command.
 
-2. **Research artifact storage** -- Files in `.branchos/shared/research/<topic-slug>.md` with YAML frontmatter (topic, date, linked feature/milestone, commit hash). Body has structured sections: findings, recommendations, pitfalls, sources.
-
-3. **Research in context packets** -- Extend `assembleContext` to include relevant research when a workstream has a linked feature that has linked research, or when research matches the current milestone.
-
-4. **Research listing command** -- `/branchos:research list` or integrate into `/branchos:status` to show existing research artifacts with their topics and dates.
-
-### Defer (v2.2+)
-
-- **Research staleness detection** -- Nice to have but not critical for launch. Research is less volatile than codebase maps.
-- **Research diffing on update** -- Showing what changed when research is re-run. Add after validating the basic flow works.
-- **Bulk research import** -- Importing external research documents (ADRs, tech spike writeups). Users can manually place files for now.
-
-## Feature Specification Details
-
-### `/branchos:research` Command Behavior
-
-**Invocation patterns:**
-```
-/branchos:research                     # Start research, prompted for topic
-/branchos:research auth libraries      # Research with topic from args
-/branchos:research --feature F-003     # Research linked to feature F-003
-/branchos:research --milestone M2      # Research linked to milestone M2
-/branchos:research list                # List existing research artifacts
-```
-
-**Conversational flow:**
-1. Developer invokes with topic (or is prompted for one)
-2. Command loads codebase context (ARCHITECTURE.md, STACK.md, CONVENTIONS.md) for grounding
-3. If `--feature` provided, loads feature description and acceptance criteria for scoping
-4. Claude and developer have a back-and-forth conversation exploring the domain
-5. When developer indicates they're satisfied (or explicitly says "done"), Claude produces the structured research artifact
-6. Artifact is written and auto-committed
-
-**This is NOT a single-shot agent.** The developer guides the research direction. Claude asks clarifying questions. The developer can redirect ("actually, focus more on X"). This conversational quality is the primary differentiator from GSD/RIPER.
-
-### Research Artifact Format
-
-```markdown
----
-topic: <topic-slug>
-title: <Human-readable title>
-createdAt: <ISO 8601>
-updatedAt: <ISO 8601>
-commitHash: <git HEAD at creation>
-feature: <F-NNN or null>
-milestone: <M1 or null>
----
-
-# Research: <Title>
-
-## Context
-
-<What was being investigated and why>
-
-## Findings
-
-<Structured findings organized by sub-topic>
-
-## Recommendations
-
-<What to use, what to avoid, with rationale>
-
-## Pitfalls
-
-<Known problems, gotchas, things that commonly go wrong>
-
-## Open Questions
-
-<Unresolved questions that need further investigation>
-
-## Sources
-
-<Links to documentation, articles, repos consulted>
-```
-
-### Context Packet Integration
-
-Extend `AssemblyInput` (existing pure function) with:
-- `research?: { topic: string; content: string }[]` -- Array of relevant research documents
-- Research is included when:
-  - Workstream is linked to a feature that has linked research
-  - Workstream is working on a milestone that has linked research
-  - Research is explicitly referenced (future: `--research <topic>` on context command)
-
-### Research Listing
-
-Add research summary to `/branchos:status` output:
-
-```
-Research:
-  auth-libraries (M2, F-003) -- 2026-03-11, 3 commits behind
-  websocket-patterns (M2) -- 2026-03-10, current
-```
-
-Or standalone: `/branchos:research list` outputs a table of topics, links, dates.
+**Defer:** Nothing. All v2.2 features are well-scoped with clear implementations and build on existing infrastructure. Ship them all.
 
 ## Complexity Assessment
 
 | Feature | Estimated Effort | Risk | Notes |
 |---------|-----------------|------|-------|
-| Research slash command | LOW (1 session) | LOW | Follows established slash command pattern. Markdown template + conversational instructions. |
-| Research artifact storage | LOW (1 session) | LOW | YAML frontmatter + markdown body. Existing pattern from feature files. |
-| Context packet integration | MEDIUM (1-2 sessions) | LOW | Extends existing `assembleContext` pure function. Needs tests for research inclusion logic. |
-| Research listing | LOW (1 session) | LOW | Read directory, parse frontmatter, format output. |
-| Feature/milestone linking | LOW (1 session) | LOW | Optional frontmatter fields, lookup logic in context assembly. |
-| **Total** | **MEDIUM (4-6 sessions)** | **LOW** | Builds entirely on existing patterns. No new architectural concepts. |
-
-## Prior Art Analysis
-
-| System | Research Approach | Artifact | User Interaction | Strength | Weakness |
-|--------|-------------------|----------|------------------|----------|----------|
-| GSD | Single-shot sub-agent spawn. Agent researches autonomously, writes RESEARCH.md. | RESEARCH.md per phase | Trigger and wait | Parallel agents, thorough | No user guidance during research. Generic results for unfamiliar domains. |
-| RIPER | Research phase is read-only exploration. Claude reads codebase, produces understanding document. | Memory bank files | Sequential phase gate | Prevents premature coding | Focused on codebase understanding, not domain/ecosystem research |
-| Research-Plan-Implement | Parallel agents investigate codebase aspects. Saves to `thoughts/shared/research/`. | Research files in shared directory | Command-driven, multi-agent | Persistent across sessions | Codebase-focused, not domain-focused |
-| Kiro | Spec-driven: requirements (EARS notation) then design then tasks. No explicit research phase. | Spec files | Conversational spec refinement | Structured output | No research step -- assumes domain knowledge exists |
-| BranchOS v2.1 (proposed) | Conversational, developer-guided. Codebase-aware. Feature/milestone-linked. Git-committed. | Research files in `.branchos/shared/research/` | Interactive back-and-forth | Contextual, guided, team-visible | Single-session (no parallel agents) |
-
-### Key Insight from Prior Art
-
-Every system that includes research treats it as a **pre-planning gate** -- research happens before discuss/plan, not during. BranchOS should follow this pattern: `/branchos:research` runs before `/branchos:discuss-phase`, and research artifacts flow into discuss and plan context packets.
-
-However, research should be **optional**, not mandatory. GSD explicitly notes to skip research for "standard web development, well-documented patterns, simple integrations." BranchOS should not force a research step.
+| GitHub username capture | LOW | LOW | Single `ghExec` call + optional field in meta.json. Graceful degradation if gh unavailable. |
+| GWT acceptance criteria parser | MEDIUM | LOW | String parsing with regex/pattern matching. Backward compatible -- freeform fallback preserved. |
+| PR body assembly function | MEDIUM | LOW | Pure function following `assembleContext` pattern. Multiple sections, each straightforward. |
+| `/branchos:create-pr` command | MEDIUM | MEDIUM | Slash command with confirmation flow + `gh pr create` invocation. Risk: edge cases in gh CLI error handling. |
+| Issue-linked workstream | MEDIUM | LOW | `gh issue view --json` + feature lookup. Reuses existing `--feature` flow after resolution. |
+| Assignee sync in sync-issues | LOW | LOW | Add `--add-assignee` to existing create/update calls. Warning on failure. |
+| **Total** | **MEDIUM** | **LOW** | Builds entirely on existing patterns. No new architectural concepts. |
 
 ## Sources
 
-- [GSD (Get Shit Done) for Claude Code](https://github.com/gsd-build/get-shit-done) -- Research phase implementation with parallel sub-agents. `/gsd:research-phase` command as prior art. (HIGH confidence)
-- [GSD Research Phase Details](https://www.claudepluginhub.com/commands/glittercowboy-get-shit-done/commands/gsd/research-phase) -- GSD research command workflow, artifact format, skip criteria (HIGH confidence)
-- [RIPER-5 for Claude Code](https://github.com/tony/claude-code-riper-5) -- Research-Innovate-Plan-Execute-Review workflow with read-only research phase (HIGH confidence)
-- [Research-Plan-Implement Framework](https://github.com/brilliantconsultingdev/claude-research-plan-implement) -- Parallel research agents, persistent findings storage (MEDIUM confidence)
-- [Kiro Spec-Driven Development](https://kiro.dev/) -- Requirements-Design-Tasks workflow without explicit research phase (MEDIUM confidence)
-- [Claude Code Slash Commands Docs](https://code.claude.com/docs/en/slash-commands) -- Custom command specification, `$ARGUMENTS` support, `allowed-tools` (HIGH confidence)
-- [Claude Code Interactive Mode](https://code.claude.com/docs/en/interactive-mode) -- Multi-turn conversation support in Claude Code sessions (HIGH confidence)
-- [GSD Workflow Deep Dive](https://www.codecentric.de/en/knowledge-hub/blog/the-anatomy-of-claude-code-workflows-turning-slash-commands-into-an-ai-development-system) -- Analysis of slash command orchestration patterns (MEDIUM confidence)
-- [Artifacts in AI-Assisted Programming](https://humanwhocodes.com/blog/2026/02/artifacts-ai-assisted-programming/) -- Role of persistent artifacts in AI-assisted development workflows (MEDIUM confidence)
+- [gh pr create manual](https://cli.github.com/manual/gh_pr_create) -- HIGH confidence, official GitHub CLI docs
+- [gh issue edit manual](https://cli.github.com/manual/gh_issue_edit) -- HIGH confidence, official GitHub CLI docs
+- [Gherkin User Stories Acceptance Criteria Guide 2026](https://testquality.com/gherkin-user-stories-acceptance-criteria-guide/) -- MEDIUM confidence, industry guide
+- [GWT Acceptance Criteria for Better User Stories](https://www.parallelhq.com/blog/given-when-then-acceptance-criteria) -- MEDIUM confidence, practitioner guide
+- [GitHub PR Template Checklist](https://graphite.com/guides/comprehensive-checklist-github-pr-template) -- MEDIUM confidence, PR template best practices
+- [GitHub PR Template Guide 2026](https://everhour.com/blog/github-pr-template/) -- MEDIUM confidence, PR template sections and structure
+- [When to Use GWT Acceptance Criteria](https://www.ranorex.com/blog/given-when-then-tests/) -- MEDIUM confidence, when GWT is appropriate
+- [Acceptance Criteria Best Practices](https://www.altexsoft.com/blog/acceptance-criteria-purposes-formats-and-best-practices/) -- MEDIUM confidence, industry overview
+- [gh issue edit --add-assignee known issues](https://github.com/cli/cli/issues/6235) -- HIGH confidence, GitHub CLI issue tracker
+- [gh api /user for username](https://docs.github.com/en/rest/users/users) -- HIGH confidence, official GitHub REST API docs
+- BranchOS source code analysis -- HIGH confidence, direct review of `src/workstream/create.ts`, `src/github/issues.ts`, `src/github/index.ts`, `src/context/assemble.ts`, `src/roadmap/types.ts`, `src/roadmap/feature-file.ts`, `src/state/meta.ts`, `src/cli/sync-issues.ts`
 
 ---
-*Feature research for: BranchOS v2.1 Interactive Research*
-*Researched: 2026-03-11*
+*Feature research for: BranchOS v2.2 PR Workflow & Developer Experience*
+*Researched: 2026-03-13*

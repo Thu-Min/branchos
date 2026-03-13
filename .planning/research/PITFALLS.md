@@ -1,258 +1,311 @@
 # Pitfalls Research
 
-**Domain:** Adding interactive research slash commands to an existing CLI-first AI dev tool with slash command architecture
-**Project:** BranchOS v2.1 Interactive Research
-**Researched:** 2026-03-11
-**Confidence:** HIGH (direct codebase analysis, slash command architecture constraints, prior v2.0 pitfalls experience)
+**Domain:** Adding PR automation, Gherkin acceptance criteria, issue-linked workflows, and assignee management to an existing CLI-first AI dev tool
+**Project:** BranchOS v2.2 PR Workflow & Developer Experience
+**Researched:** 2026-03-13
+**Confidence:** HIGH (direct codebase analysis, gh CLI documentation, existing integration patterns from v2.0/v2.1)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Context Window Bloat From Accumulated Research Artifacts
+### Pitfall 1: PR Body Markdown Corruption via Shell Argument Passing
 
 **What goes wrong:**
-Research is inherently open-ended. Each research iteration produces markdown artifacts (findings, comparisons, summaries). When these accumulate in the context packet, the assembled context grows unbounded. The existing `assembleContext` function already loads architecture, conventions, modules, discuss/plan/execute artifacts, decisions, feature context, and diff summaries (the `AssemblyInput` interface has 14 fields). Adding research artifacts on top pushes the context packet beyond what fits usefully in Claude Code's context window. The LLM starts dropping or ignoring earlier research, or the slash command output becomes so large that Claude Code truncates it.
+The `ghExec` function passes arguments via `execFile('gh', args)`, which is correctly shell-injection-safe. However, PR body content assembled from feature descriptions, acceptance criteria, and phase summaries will contain markdown with backticks, pipes (from tables), newlines, and special characters. Passing this as a `--body` argument fails silently -- backtick-wrapped code blocks render incorrectly, pipe characters in tables break, and newlines may be stripped or doubled depending on the platform. The PR gets created but with garbled formatting that undermines the entire purpose of auto-assembling a rich PR body.
 
 **Why it happens:**
-BranchOS's context model was designed for structured, bounded artifacts (a discuss.md, a plan.md, an execute.md -- each produced once per phase). Research is different: it can produce multiple files per topic, accumulate across sessions, and reference external sources. Developers naturally want "all my research available" when they move to planning, but assembling everything creates an unmanageable context payload.
+The existing `createIssue` function already handles this partially with a `BODY_SIZE_LIMIT` check and `--body-file` fallback (line 19-28 of `src/github/issues.ts`). But the threshold is 32KB -- well above where formatting breaks start occurring. Markdown with nested code blocks, GWT scenarios, and tables breaks at much smaller sizes when passed as shell arguments, because `execFile` still imposes OS-level argument length limits and special character handling varies by platform.
 
 **How to avoid:**
-- Research artifacts must have a **summary layer**. Store raw research in detail files but only inject a condensed `research-summary.md` into the context packet. Maximum 200-300 lines in the summary.
-- Implement a research-to-context pipeline: raw findings -> distilled summary -> context packet inclusion. The summary is what gets assembled by `assembleContext`, not the raw research.
-- Set a hard size budget for research context (e.g., 4000 tokens worth). Truncate with a "See full research in .branchos/..." pointer.
-- Never auto-include all research files in the context packet. Include only the summary for the current feature/workstream.
+- Always use `--body-file` for PR creation. Write the assembled body to a temp file and pass `--body-file <path>`. This is the approach the codebase already uses for large issue bodies -- extend it to be the default, not the fallback.
+- Test PR body rendering with real-world content: feature descriptions with code blocks, GWT acceptance criteria with pipe characters in table format, and phase summaries with diff snippets.
+- Clean up the temp file in a `finally` block (the existing pattern in `createIssue` already does this correctly).
 
 **Warning signs:**
-- Context packet output exceeds 500 lines total
-- Users run `/branchos:context` and get a wall of text they scroll past
-- Research from unrelated topics leaks into workstream context
-- Claude Code responses start ignoring or contradicting earlier research findings
+- PR bodies show literal `\n` instead of newlines
+- Markdown tables render as inline text
+- Code blocks inside acceptance criteria lose their formatting
+- Platform-specific failures (works on macOS, breaks in CI on Linux)
 
 **Phase to address:**
-Phase 1 (research storage design). The storage schema must separate raw research from summarized research from the start. Retrofitting a summary layer onto flat research files is painful.
+Phase 1 (PR creation implementation). Use `--body-file` from day one. Do not replicate the `createIssue` pattern of trying `--body` first.
 
 ---
 
-### Pitfall 2: Over-Engineering the Research Workflow Into a Multi-Step State Machine
+### Pitfall 2: Given/When/Then Format Migration Breaking Existing Feature Files
 
 **What goes wrong:**
-The existing workstream model has a clean three-step lifecycle: discuss -> plan -> execute, tracked via `PhaseStep` with status fields. It is tempting to model research as its own multi-step state machine (e.g., "question -> investigate -> synthesize -> validate -> finalize") with status tracking, transitions, and guards. This creates a rigid workflow that fights against research's inherently iterative, non-linear nature. Developers abandon the structured flow and just write files manually, making the state machine dead code.
+Existing feature files have acceptance criteria as free-form markdown in the `body` field. Migrating to Given/When/Then (Gherkin) format means either: (a) retroactively reformatting all existing feature file bodies, breaking any downstream consumers that parse the current format, or (b) supporting both formats simultaneously, creating parsing ambiguity and inconsistent context packets. The `readFeatureFile` function (`src/roadmap/feature-file.ts`) parses frontmatter and returns the body as a raw string -- there is no structured acceptance criteria field. Adding structured GWT means changing either the frontmatter schema or introducing a body-parsing convention, both of which are breaking changes.
 
 **Why it happens:**
-BranchOS has a successful pattern (`PhaseStep` with `'not-started' | 'in-progress' | 'complete'` tracking) and the natural instinct is to replicate it. But research does not follow a linear pipeline. A developer might research, discover a new question, pivot, research again, merge findings, and backtrack. Forcing this into a state machine creates friction without value.
+The current `Feature` interface (`src/roadmap/types.ts`) and `FeatureFrontmatter` have no `acceptanceCriteria` field. Acceptance criteria are embedded in the markdown body, unstructured. This was fine when criteria were human-read only. But v2.2 needs to extract criteria for PR bodies and context packets programmatically, which means the body text needs a parseable convention or the frontmatter needs new fields.
 
 **How to avoid:**
-- Research should be **artifact-driven, not state-driven**. Track what files exist and when they were last updated, not what "step" the researcher is on.
-- Use a simple status model: `active` / `complete` / `stale`. No intermediate steps. No transition guards.
-- The slash command should be re-entrant: running `/branchos:research` again picks up where you left off based on existing artifacts, not based on a state field.
-- Let the content of research files (presence of summary, presence of findings) imply progress, not a deeply nested status object in state.json.
+- Do NOT add acceptance criteria to frontmatter. GWT scenarios are multi-line and would break the simple key-value YAML parser (`splitFrontmatter` splits on first `:` per line -- multi-line values are not supported).
+- Use a **markdown convention within the body**: a `## Acceptance Criteria` heading followed by GWT blocks. Parse the body by detecting this heading and extracting content underneath it. This is backward-compatible -- existing feature files without the heading still work; they just have no structured criteria.
+- Write a `parseAcceptanceCriteria(body: string)` utility that extracts GWT scenarios from the body markdown. Return `null` if no `## Acceptance Criteria` section found (backward-compatible).
+- Do NOT auto-migrate existing feature files. Let teams add GWT criteria to feature files incrementally. The system should gracefully degrade: if no GWT section exists, context packets show the raw body as today.
 
 **Warning signs:**
-- state.json gets a deeply nested research status object with multiple sub-steps
-- You are writing transition validation code ("can't synthesize before investigating")
-- The research command has more than 2-3 "modes" or sub-steps
-- Users complain they cannot go back to add more research after "completing" a step
+- Feature file parsing starts failing on existing files after the change
+- Frontmatter parser encounters multi-line values and produces garbage
+- Tests that relied on exact body content break because of format changes
+- Teams resist adopting GWT because retrofitting all feature files is too much work
 
 **Phase to address:**
-Phase 1 (core design). This is an architectural decision that pervades everything. Get it wrong and every subsequent phase fights it.
+Phase 1 (acceptance criteria format). Design the body-parsing convention and extraction utility before touching any slash commands or context assembly. Ensure backward compatibility with existing feature files is explicitly tested.
 
 ---
 
-### Pitfall 3: Research Scope Creep -- Trying to Be a General-Purpose Research Tool
+### Pitfall 3: GitHub Username Capture Fragility and Auth State Assumptions
 
 **What goes wrong:**
-The feature starts as "research before planning" but grows to include: web search integration, automated source fetching, citation management, knowledge base building, cross-project research sharing, research templates for different domains, and AI-powered synthesis. Each addition is individually reasonable but collectively they transform BranchOS from a workflow tool into a research platform. Development stalls, the feature never ships, and the simple use case (developer asks questions, gets answers, records findings for planning) gets buried under complexity.
+The plan calls for automatic GitHub username capture on `create-workstream`, stored in workstream metadata. The natural approach is to call `gh api /user --jq '.login'` via `ghExec`. This fails when: (a) `gh` is not installed (the workstream creation flow currently has no gh dependency), (b) `gh` is installed but not authenticated (common for developers using SSH-only workflows), (c) the user is authenticated to a GitHub Enterprise instance, not github.com, (d) network is unavailable. Worst case: workstream creation itself fails because of a GitHub API call that was supposed to be a nice-to-have metadata capture.
 
 **Why it happens:**
-Research is an unbounded problem domain. Every person who touches the feature sees a different "essential" capability. The lack of a clear scope boundary means each review cycle adds requirements. Also, because the research is conversational (user talks to Claude), it feels natural to keep expanding what the conversation can do.
+The existing `createWorkstream` function (`src/workstream/create.ts`) has zero GitHub dependencies. It works entirely with local git and filesystem operations. Adding a GitHub API call introduces a new failure mode into a previously reliable path. The `checkGhAvailable` function exists (`src/github/index.ts`) but is only used in `sync-issues`, not in workstream creation.
 
 **How to avoid:**
-- Define research as: **structured conversation that produces planning-ready artifacts**. Nothing more.
-- The slash command's job is to (1) load existing context and research artifacts, (2) frame the research question, (3) let the developer converse with Claude, and (4) record the output. BranchOS does not DO the research -- Claude does. BranchOS captures and organizes the results.
-- Hard "out of scope" list: no custom web search integration (Claude Code already has WebSearch/WebFetch tools), no citation management, no cross-project research, no domain-specific research templates.
-- Ship the minimal version first: a command that creates/loads a research session and writes findings to a structured file. Iterate from real usage, not imagination.
+- Make GitHub username capture **best-effort, never blocking**. Wrap the API call in a try/catch that silently falls back to `null`. The workstream is created regardless.
+- Store the username in `WorkstreamMeta` as an optional field: `assignee?: string`. Missing assignee is valid state, not an error.
+- Capture username lazily: try `gh api /user --jq '.login'` first. If that fails, try `gh auth status --json hosts` and parse the login from JSON output. If both fail, store `null` and log a warning (not an error).
+- Do NOT add `gh` to the critical path of `createWorkstream`. The function signature should not change in a way that makes gh availability a prerequisite.
+- Add a schema migration from v2 to v3 for `WorkstreamMeta` that adds the `assignee` field as optional, so existing workstreams are not affected.
 
 **Warning signs:**
-- The research slash command markdown file exceeds 150 lines
-- You are building custom tool integrations inside the slash command
-- Feature discussions keep saying "we could also..."
-- The research file schema has more than 5-6 fields
+- `create-workstream` starts failing for developers who don't use GitHub
+- Test suite breaks because `gh` is not available in CI
+- Workstream creation takes 2-3 seconds longer due to network round-trip
+- Schema migration not written, causing old workstreams to error on read
 
 **Phase to address:**
-Phase 0 (requirements/scoping). Write explicit scope boundaries before any code. This is a project constraint, not a phase deliverable.
+Phase 2 (workstream metadata). This must be non-blocking and optional from the start. Write the schema migration alongside the meta.ts changes.
 
 ---
 
-### Pitfall 4: Breaking the Existing discuss -> plan -> execute Flow
+### Pitfall 4: Issue-Linked Workstream Creation With Invalid or Inaccessible Issue Numbers
 
 **What goes wrong:**
-Research gets wedged into the existing workflow in a way that creates confusion about ordering and purpose. Does research happen before discuss? During discuss? Is it a separate pre-phase? Developers do not know when to use `/branchos:research` vs `/branchos:discuss-phase`. The two commands overlap in purpose (both involve "talking about what to build"), creating a redundant workflow where developers skip one or use them inconsistently.
+`create-workstream --issue #N` needs to validate that issue N exists, is open, and (ideally) was created by `sync-issues` so it can be linked back to a feature. Edge cases abound: the issue was closed, the issue belongs to a different repo, the issue number does not exist, the issue was created manually (not by sync-issues) so it has no `[F-XXX]` prefix in the title, the user passes `#123` (with hash) vs `123` (without), or the issue is in a private repo the user cannot access. Each failure mode needs a clear error message, but developers will encounter them at the worst time -- when they are trying to start work, not when they are debugging tooling.
 
 **Why it happens:**
-Research and discussion are conceptually adjacent. Both involve exploring a problem space. The existing discuss-phase already produces goals, requirements, assumptions, unknowns, and decisions. Research produces findings, recommendations, and constraints. Without a clear boundary, they blur together.
+GitHub issue numbers are just integers. There is no type safety or relationship tracking between a BranchOS feature ID and a GitHub issue number. The existing `sync-issues` command creates issues with `[F-XXX]` title prefixes and stores the issue number in the feature frontmatter, but this relationship is one-way (feature -> issue). Going the other direction (issue -> feature) requires either title parsing or scanning all feature files.
 
 **How to avoid:**
-- **Research is project-level or feature-level, not workstream-phase-level.** This is the key architectural distinction. Research lives in `.branchos/shared/research/` (or per-feature), not in workstream phase directories. It happens BEFORE a workstream exists, or early in the workstream to inform discussion.
-- Discuss-phase consumes research output. Research produces findings; discuss-phase makes decisions informed by those findings. Clear pipeline: research -> discuss (informed by research) -> plan -> execute.
-- Make the relationship explicit in the slash command: `/branchos:discuss-phase` should check for and reference existing research artifacts, surfacing them as input context.
-- Do NOT add a `research: PhaseStep` field to the `Phase` interface in state.ts. Research is not a phase step.
+- Strip leading `#` from the issue argument before parsing: `const issueNum = parseInt(String(issueArg).replace('#', ''), 10)`.
+- Validate the issue exists via `gh issue view N --json number,title,state` before proceeding. Return a clear error if the issue is not found or is closed.
+- To link issue -> feature: scan feature files for one where `feature.issue === issueNum`. If found, auto-link the workstream to that feature (same as `--feature` flow). If not found, create the workstream without a feature link but warn the user.
+- Make the issue validation optional when gh is unavailable: store the issue number in meta even if it cannot be validated, with a warning.
+- Test with: non-existent issue, closed issue, issue from different repo, issue with no feature link, issue with feature link.
 
 **Warning signs:**
-- Someone proposes adding `research: PhaseStep` to the Phase interface
-- Users ask "should I research or discuss first?"
-- Research artifacts end up in `.branchos/workstreams/<id>/phases/<n>/research.md`
-- The discuss slash command and research slash command produce overlapping output formats
+- Users pass `#123` and get a NaN parse error
+- Workstream created but feature link is silently wrong (wrong feature matched)
+- Validation call fails and blocks workstream creation entirely
+- No test coverage for issue-not-found and issue-closed cases
 
 **Phase to address:**
-Phase 1 (storage design) and Phase 2 (slash command design). The storage location and the command's framing both need to reinforce that research is a separate concern from workstream phases.
+Phase 2 (issue-linked workstreams). Write the validation and feature-matching logic as a separate testable utility before wiring it into `createWorkstream`.
 
 ---
 
-### Pitfall 5: Conversational State Persistence Across Slash Command Invocations
+### Pitfall 5: Duplicate PR Creation Without Idempotency
 
 **What goes wrong:**
-Slash commands in Claude Code are stateless between invocations. Each time a user runs `/branchos:research`, Claude Code processes the command markdown and $ARGUMENTS fresh. The research "session" -- the back-and-forth dialogue where the developer asks questions and Claude responds -- cannot be persisted by BranchOS because BranchOS only controls what gets written to files, not Claude Code's conversation memory. Developers expect to "resume" a research conversation, but the slash command can only reload artifact files, not the conversational context that produced them.
+A developer runs `/branchos:create-pr` on a branch that already has an open PR. The `gh pr create` command creates a second PR for the same branch. GitHub allows multiple PRs from the same head branch (they just target different bases or are duplicates). The developer now has two PRs, one of which is orphaned. Reviewers are confused, CI runs on both, and the developer has to manually close the duplicate.
 
 **Why it happens:**
-Interactive research implies multi-turn conversation. But slash commands are structured prompts that execute within the current conversation. If a developer starts a new conversation and runs `/branchos:research` again, all prior conversational context is gone. BranchOS can assemble file-based context, but it cannot control Claude Code's conversation history.
+`gh pr create` does not check for existing PRs on the same branch. It creates a new one unconditionally. This is a known limitation documented in gh CLI discussions. The BranchOS slash command, if implemented naively, will shell out to `gh pr create` without checking first.
 
 **How to avoid:**
-- Design for **artifact-based continuity, not conversation continuity**. Each research invocation reads existing research files and uses them as context. The "conversation" is reconstructed from artifacts, not from chat history.
-- Structure research artifacts to be self-contained: each finding should include the question asked, the answer found, the confidence level, and the sources. This means a new Claude session can read the artifact and understand what was already explored.
-- Include a "Research Log" section in the research file that acts as a structured transcript -- not a literal chat log, but a question -> finding sequence that lets Claude pick up context.
-- Do NOT try to build conversation persistence. It is outside BranchOS's control and would require hacking Claude Code internals.
+- Before creating a PR, check for existing PRs on the current branch: `gh pr list --head <branch> --state open --json number,url`. If one exists, offer to update it instead (`gh pr edit`) or open it in the browser.
+- Store the PR number/URL in workstream metadata after creation. On subsequent runs, check meta first -- if PR already exists, switch to update mode.
+- The slash command should handle three states: (1) no PR exists -> create, (2) PR exists and was created by BranchOS -> update body/title, (3) PR exists but was created manually -> warn and ask user what to do.
 
 **Warning signs:**
-- Developers complain that Claude "forgot" what they researched last session
-- Research artifacts are written as conclusions without the questions that led to them
-- Someone proposes storing Claude conversation IDs or message histories
-- Research output is only useful in the session it was created (not readable standalone)
+- Developers running create-pr twice get duplicate PRs
+- No check for existing PR before creation
+- Workstream metadata does not track PR number after creation
+- Tests only cover the "happy path" of first-time PR creation
 
 **Phase to address:**
-Phase 2 (slash command design). The command's prompt template must explicitly instruct Claude to read existing artifacts and build on them, creating continuity through artifact quality rather than conversation memory.
+Phase 1 (PR creation). Idempotency check must be in the first implementation, not added later. This is not an edge case -- developers will absolutely run the command multiple times.
 
 ---
 
-### Pitfall 6: Research Artifact Bloat in Git History
+### Pitfall 6: Assignee Setting Fails Silently for Non-Org Members or Insufficient Permissions
 
 **What goes wrong:**
-BranchOS commits all artifacts to git (a key design decision from v1). Research, being iterative, produces many revisions. A developer might update research findings 10-15 times during a session. If each update triggers an auto-commit (following the established pattern from discuss/plan/execute commands which auto-commit in Step 8), the git history fills with noisy "chore(branchos): update research" commits that obscure meaningful changes. Worse, large research files with embedded source quotes or analysis can bloat the repository.
+`sync-issues` is updated to set assignee on GitHub Issues using the captured GitHub username from workstream metadata. The `gh issue edit N --add-assignee <username>` call fails silently (or with an unhelpful error) when: (a) the username is not a collaborator on the repo, (b) the repo is in an organization and the user is not a member, (c) the GitHub token lacks `write:org` scope, (d) the user deactivated their account, or (e) the username was captured from a different GitHub instance (Enterprise vs github.com). The sync reports success but the assignee is not actually set.
 
 **Why it happens:**
-The existing auto-commit pattern works for discuss/plan/execute because those produce one artifact per invocation. Research is different -- it is iterative within a single conceptual session, with the file being updated as findings accumulate. Applying the same auto-commit-on-every-write pattern creates commit spam.
+GitHub's assignee API requires the user to be a valid assignee for the repository. The REST API endpoint `GET /repos/{owner}/{repo}/assignees` checks this, but the `gh issue edit --add-assignee` command does not pre-validate -- it just makes the API call and returns an error. BranchOS's `ghExec` function catches errors from stderr, but the error messages from GitHub are often opaque ("Resource not accessible by integration" or "Validation Failed").
 
 **How to avoid:**
-- Auto-commit research artifacts only at **session boundaries**, not on every write. The research slash command should write files during the session but only commit when the user explicitly signals "done for now" or when the research command reaches its final step.
-- Commit on explicit save points: "save research progress" as a user action within the command, not automatic on every file update.
-- Keep research files concise. Structured markdown (tables, bullet points) instead of prose. Set a soft guideline of 200 lines max per research file.
-- Use a `.branchos/shared/research/` directory with per-topic files rather than one monolithic research dump.
+- Pre-validate the assignee before attempting to set it: `gh api /repos/{owner}/{repo}/assignees/{username}` returns 204 if valid, 404 if not. Use this as a guard.
+- If the assignee is invalid, add a warning to the sync result (like the existing warnings array in `SyncIssuesResult`) but do not fail the entire sync. The issue should still be created/updated without the assignee.
+- Map common GitHub error messages to actionable BranchOS messages: "Resource not accessible" -> "User X is not a collaborator on this repo. Add them as a collaborator or remove the assignee."
+- Test with: valid assignee, non-collaborator username, null/missing assignee in meta, deactivated user.
 
 **Warning signs:**
-- `git log --oneline` shows 10+ consecutive "update research" commits
-- `.branchos/` directory size grows noticeably after research sessions
-- Team members complain about noisy git history from research commits
-- Research files exceed 500 lines
+- `sync-issues` appears to succeed but issues have no assignee
+- Opaque error messages from gh CLI passed through without translation
+- Assignee failure causes the entire sync to abort (instead of just warning)
+- No test mocking for the assignee validation endpoint
 
 **Phase to address:**
-Phase 2 (slash command implementation). The commit strategy should be designed into the command flow from the start.
+Phase 3 (assignee tracking in sync-issues). Implement as a separate concern from issue create/update, with its own error handling and validation.
 
 ---
+
+## Moderate Pitfalls
+
+### Pitfall 7: Schema Migration Not Written for WorkstreamMeta Changes
+
+**What goes wrong:**
+Adding `assignee` and `prNumber` fields to `WorkstreamMeta` without writing a schema migration from v2 to v3. Existing workstreams (created under v2 schema) fail to read because `migrateIfNeeded` does not know how to add the new optional fields. The `readMeta` function throws or returns an object missing fields that code now expects to exist.
+
+**Prevention:**
+- Add a migration from v2 to v3 in `src/state/schema.ts` that adds `assignee: null` and `prNumber: null` to existing workstream meta.
+- Bump `CURRENT_SCHEMA_VERSION` to 3.
+- The migration should be additive only (add new fields with null defaults), not destructive.
+- Test by reading a v2 meta.json through the migration chain and verifying the v3 output has the new fields.
+
+---
+
+### Pitfall 8: GWT Format Being Too Rigid for Non-Behavioral Features
+
+**What goes wrong:**
+Given/When/Then format works well for user-facing behavioral features but is awkward for infrastructure, refactoring, or performance features. Example: "Feature: Migrate context assembly to streaming" -- there is no meaningful "Given" (a user state), only technical preconditions. Teams force-fit technical criteria into GWT format, producing awkward scenarios like "Given the system is running / When context is assembled / Then it should use streaming" which adds no clarity over "Context assembly uses streaming." This makes the format feel like bureaucratic overhead rather than a helpful structure.
+
+**Prevention:**
+- Make GWT format recommended but not required. The `parseAcceptanceCriteria` function should also recognize a simpler checklist format (markdown checkboxes) as valid acceptance criteria.
+- In the feature file convention: `## Acceptance Criteria` section can contain either GWT scenarios (detected by `Given`/`When`/`Then` keywords) or a plain checkbox list.
+- Context packets should render both formats cleanly. PR body assembly should handle both.
+- Document in the slash command that GWT is for user-facing behavioral criteria; use checklists for technical criteria.
+
+---
+
+### Pitfall 9: PR Creation Slash Command Scope Confusion With Existing Commands
+
+**What goes wrong:**
+`/branchos:create-pr` overlaps conceptually with the workstream archival flow. Currently, after a branch is merged, workstreams are archived. Adding PR creation raises questions: Does create-pr also update the feature status? Does it update the issue? Should it run sync-issues? Should it archive the workstream after the PR is merged? The command's responsibility boundary is unclear, and it either does too much (becoming a monolithic "ship it" command) or too little (requiring users to manually run 3-4 commands in sequence).
+
+**Prevention:**
+- `create-pr` does exactly one thing: creates/updates a GitHub PR from workstream context. It does NOT update feature status, sync issues, or archive workstreams.
+- Document the intended workflow: `create-pr` -> reviewer merges -> `archive-workstream` (which already exists and handles cleanup).
+- If the developer wants to update the issue and feature status, they run `sync-issues` separately. Keep commands composable, not monolithic.
+- In the slash command markdown, explicitly state what the command does NOT do.
+
+---
+
+### Pitfall 10: Context Packet Size Explosion With GWT Acceptance Criteria
+
+**What goes wrong:**
+The `formatFeatureContext` function in `src/cli/context.ts` (line 37-49) currently formats feature context as a simple table plus the body. With GWT acceptance criteria added, the body can grow significantly -- 5-10 scenarios with 3-5 steps each is 30-50 lines per feature. If multiple features are referenced (or if the feature body includes detailed descriptions alongside GWT), the context packet grows well past useful limits. This compounds with existing sections (architecture, conventions, modules, diff, decisions, research).
+
+**Prevention:**
+- In context packets, include only the GWT scenarios themselves (extracted from the body), not the entire feature body. The extraction utility separates "description" from "acceptance criteria."
+- Set a line budget for acceptance criteria in context: max 30 lines. If more, truncate with "See full criteria in feature file."
+- For PR body assembly (different from context packets), include the full criteria -- the PR has more room than the context window.
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 11: `gh pr create` Requires Branch Pushed to Remote
+
+**What goes wrong:** Developer runs `/branchos:create-pr` on a branch with unpushed commits. `gh pr create` fails because the branch does not exist on the remote.
+
+**Prevention:** Before running `gh pr create`, check if the branch has a remote tracking branch. If not, push it first with `git push -u origin <branch>`. Include this in the slash command flow, not as a prerequisite the user must remember.
+
+---
+
+### Pitfall 12: PR Title Derived From Feature Title May Be Too Long
+
+**What goes wrong:** Feature titles are descriptive (e.g., "Automatic GitHub username capture on create-workstream stored in workstream metadata"). Using this as the PR title exceeds GitHub's practical limit (256 chars hard limit, but 70 chars is the convention for readability).
+
+**Prevention:** Truncate PR title to 70 characters. Use the feature ID as a prefix for traceability: `[F-003] Short description`. Full feature title goes in the PR body.
+
+---
+
+### Pitfall 13: Race Condition in Concurrent Workstream Creation With --issue
+
+**What goes wrong:** Two developers simultaneously create workstreams for the same issue. Both validate the issue exists, both create workstreams, both try to update the feature file status to `in-progress`. The second commit fails or overwrites the first.
+
+**Prevention:** This is an existing limitation of the file-based coordination model (file-level conflict detection). The `createFeatureLinkedWorkstream` function already checks `feature.status === 'in-progress'` as a guard (line 127). The `--issue` flow should do the same check against the feature linked to that issue. Document this as a known race condition that git conflict resolution handles.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| PR creation slash command | Duplicate PR creation (Pitfall 5), body formatting corruption (Pitfall 1), branch not pushed (Pitfall 11) | Idempotency check first, always use --body-file, auto-push before create |
+| GWT acceptance criteria format | Breaking existing feature files (Pitfall 2), too rigid for technical features (Pitfall 8), context bloat (Pitfall 10) | Body-parsing convention not frontmatter, support both GWT and checklists, line budget in context |
+| Issue-linked workstream creation | Invalid issue numbers (Pitfall 4), hash prefix in argument (Pitfall 4), no feature match (Pitfall 4) | Strip hash, validate via gh, graceful fallback when no feature link found |
+| GitHub assignee tracking | Blocking workstream creation (Pitfall 3), silent failure in sync (Pitfall 6), schema migration (Pitfall 7) | Best-effort capture, pre-validate assignee, write v2->v3 migration |
+
+## Integration Gotchas
+
+| Integration Point | Common Mistake | Correct Approach |
+|-------------------|----------------|------------------|
+| `WorkstreamMeta` (src/state/meta.ts) | Adding required fields that break existing workstreams | Add `assignee?: string` and `prNumber?: number` as optional fields; write schema migration v2->v3 |
+| `Feature` body parsing (src/roadmap/feature-file.ts) | Trying to add GWT to frontmatter (breaks single-line YAML parser) | Parse GWT from body markdown via `## Acceptance Criteria` heading convention |
+| `ghExec` for PR creation (src/github/index.ts) | Reusing the same arg-passing pattern as issue creation | Always use `--body-file` for PR bodies; extract shared temp-file pattern from `createIssue` |
+| `assembleContext` (src/context/assemble.ts) | Including full GWT body in context packet | Extract and truncate acceptance criteria separately from feature description |
+| `createWorkstream` (src/workstream/create.ts) | Making `gh` a hard dependency for username capture | Wrap gh call in try/catch, store null on failure, never block workstream creation |
+| `syncIssuesHandler` (src/cli/sync-issues.ts) | Failing entire sync when one assignee update fails | Add assignee as separate step after issue create/update, with independent error handling per feature |
+| `formatFeatureContext` (src/cli/context.ts) | Not updating to handle structured GWT | Extend to show GWT scenarios in a formatted block; handle both GWT and plain body gracefully |
 
 ## Technical Debt Patterns
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Storing research in workstream dir instead of shared | Simpler path resolution, no new storage location needed | Research locked to one workstream, cannot share across features or reuse when workstream is archived | Never -- research should be reusable across workstreams |
-| No size limits on research artifacts | Users write freely without constraints | Context assembly becomes unwieldy, context packet exceeds useful size | MVP only -- add limits before second iteration |
-| Hardcoding research file structure in slash command markdown only | Ships faster, no TypeScript code changes needed | Cannot validate structure programmatically, cannot extract summaries for context assembly, cannot detect staleness | First iteration only, must add TypeScript support for context integration |
-| Skipping research-to-context integration | Research command works standalone without touching assembleContext | Discuss/plan phases do not benefit from research, defeating the entire purpose of integrated research | Never -- integration is the whole point of this milestone |
-| Single flat research file per topic | Simple file management, easy to understand | Cannot track multiple research sessions, no separation of raw findings from summary | Acceptable for v2.1 MVP if summary section is embedded in the file |
-| No research indexing/manifest | Fewer files to manage, simpler commands | Cannot list research topics without scanning directory, cannot associate research with features | Acceptable for MVP if research count stays under 10 |
-
-## Integration Gotchas
-
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Context assembly (`assembleContext` in `src/context/assemble.ts`) | Adding research as another full-text section alongside architecture/conventions/modules | Add a dedicated `researchSummary` field to `AssemblyInput` with a size budget; only include the summary section, not raw findings |
-| Existing discuss-phase slash command | Not referencing research artifacts when they exist | Update `commands/branchos:discuss-phase.md` to check for and load relevant research as input context in Step 3 (Gather context) |
-| State model (`WorkstreamState` in `src/state/state.ts`) | Adding complex research state to WorkstreamState with new PhaseStep-like fields | Research state is separate -- either in shared state or as file-presence detection. Do not extend WorkstreamState or Phase with research fields |
-| Feature registry | No link between features and research topics | Research files should be nameable by feature ID (e.g., `research-F001.md`) so feature-aware context assembly can include relevant research |
-| Auto-commit pattern (Step 8 in slash commands) | Committing on every research file write, same as discuss/plan/execute | Commit at session end or on explicit user action only -- research is iterative, not one-shot |
-| Slash command `allowed-tools` | Restricting tools too tightly for research (e.g., only `Bash(npx branchos *)`) | Research needs Read, Write, Glob, Grep, Bash(git), Bash(npx branchos), and potentially WebSearch/WebFetch for Claude to actually perform research |
-| Slash command `$ARGUMENTS` | Not passing the research topic through $ARGUMENTS | Research command must use $ARGUMENTS as the topic/question, similar to how discuss-phase uses it as guidance |
-| `ensureWorkstream` gate | Requiring a workstream to exist before research can run | Research should work without a workstream -- it is project/feature-level, not workstream-level |
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Loading all research files into context packet | Slow context assembly, huge output, Claude ignores early content | Only load summary file or summary section, not all raw research | More than 3-4 research files per project |
-| Glob-scanning `.branchos/shared/research/` on every command invocation | Noticeable delay on slash command start | Read only the specific research file for the current feature, or maintain a lightweight index | More than 20 research files (unlikely near-term but possible) |
-| Large research artifacts inflating git diff in `branchos status` | Status command slows down, diff output becomes unreadable | Keep research files under 200 lines; use structured format not prose | Cumulative research across all topics exceeds 50 files |
-| Research file reads during `assembleContext` when no research exists | Unnecessary filesystem calls for projects not using research | Guard with existence check before reading; lazy-load only when research directory exists | Any project not using v2.1 research features |
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Research artifacts containing API keys or credentials discovered during investigation | Keys committed to git in `.branchos/shared/research/` visible to all repo collaborators | Research file template should include a "do not include secrets" reminder; slash command prompt should instruct Claude to redact sensitive values |
-| Research slash command with overly broad `allowed-tools` (e.g., `Bash(*)`) | Arbitrary command execution during research session | Scope `allowed-tools` to read-only operations plus git and branchos commands; use pattern `Bash(git *)`, `Bash(npx branchos *)` |
-| External URL content embedded verbatim in research files | Copyright issues, potential injection of malicious content, large binary payloads | Store URLs and summaries in research files, not full page content; Claude naturally summarizes but the prompt should reinforce this |
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Research command requires choosing a "research type" or "mode" before starting | Friction at the moment of curiosity; developer just wants to ask a question | Single entry point: `/branchos:research <topic>`. Infer structure from content, not upfront configuration |
-| No way to see what has been researched already | Developers re-research topics or lose track of findings | `/branchos:research` with no arguments lists existing research files with one-line summaries |
-| Research output is a wall of unstructured text | Hard to scan, hard to reference from discuss/plan phases | Enforce structured output: summary, key findings (bulleted), open questions, confidence levels |
-| Must create a workstream before researching | Research often happens BEFORE you know what workstream you need | Allow research at project/feature level without requiring a workstream -- bypass `ensureWorkstream` gate |
-| No indication when research is "enough" | Developers either over-research (perfectionism) or under-research (rushing) | Include a "completeness check" in research output: table stakes covered? architecture patterns identified? key risks surfaced? |
-| Research and discuss-phase feel redundant | Developer confusion about which command to use, workflow feels heavy | Clear naming and help text. Research = "what exists, what are the options." Discuss = "what are we building, what decisions do we make." |
-| Research artifacts not visible to teammates | One developer researches but others don't see findings because they are in a branch | Research in `.branchos/shared/research/` (shared layer) means it is visible on any branch after commit+push |
+| Skipping idempotency check for PR creation | Ships faster, fewer gh API calls | Duplicate PRs, user confusion, manual cleanup | Never -- this is not an edge case |
+| Hardcoding PR body template in slash command | No TypeScript changes needed for template | Cannot test body assembly, cannot reuse for other outputs | First iteration only if template is simple |
+| Not writing schema migration for meta.ts | One fewer file to change | Existing workstreams break on read | Never -- schema migration is a core BranchOS pattern |
+| Storing assignee in workstream meta only (not feature file) | Simpler data model | Cannot show assignee in feature list or issue sync | Acceptable for v2.2 if sync-issues reads from workstream meta by scanning |
+| Not pre-validating assignee before sync | Fewer API calls, simpler code | Silent failures, assignee not actually set | MVP only -- add validation before second iteration |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Research command works:** Often missing integration with discuss-phase -- verify that `/branchos:discuss-phase` actually loads and references research artifacts when they exist
-- [ ] **Research files written:** Often missing summary section -- verify that research files have a structured summary block (not just raw findings) that context assembly can extract
-- [ ] **Context assembly updated:** Often missing research in context packet -- verify `/branchos:context` includes research summary when research exists for the current feature
-- [ ] **Research without workstream:** Often missing project-level research path -- verify `/branchos:research` works when no workstream is active (pre-workstream research on main branch)
-- [ ] **Artifact continuity:** Often missing structured question/finding format -- verify that a new Claude session can read research artifacts and continue meaningfully without prior conversation context
-- [ ] **Git integration:** Often missing sensible commit strategy -- verify research sessions do not produce 10+ commits per session
-- [ ] **Feature linkage:** Often missing feature-to-research association -- verify that feature-linked workstreams surface relevant research in context assembly output
-- [ ] **Allowed-tools scope:** Often missing necessary tools for research -- verify the research slash command's `allowed-tools` includes WebSearch, WebFetch, Read, Glob, Grep so Claude can actually investigate
+- [ ] **PR idempotency:** Verify running create-pr twice does not create a duplicate PR (check for existing PR first)
+- [ ] **PR body formatting:** Verify GWT scenarios, tables, and code blocks render correctly in the created PR (use --body-file)
+- [ ] **Existing feature files:** Verify feature files created before v2.2 (without GWT section) still parse and display correctly
+- [ ] **Workstream creation without gh:** Verify `create-workstream` still works when gh CLI is not installed (assignee is null, no error)
+- [ ] **Issue number with hash:** Verify `--issue #123` works (strip the hash prefix)
+- [ ] **Schema migration:** Verify workstreams created under v2 schema read correctly after v3 migration (new fields have null defaults)
+- [ ] **Assignee validation:** Verify sync-issues warns (not errors) when assignee cannot be set on GitHub
+- [ ] **Branch push before PR:** Verify create-pr pushes the branch to remote if not already pushed
+- [ ] **PR metadata stored:** Verify PR number/URL is saved to workstream meta after creation for subsequent updates
+- [ ] **Context packets unchanged for old features:** Verify assembleContext output is identical for feature files without GWT sections
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Context bloat from research | LOW | Add summary extraction to `assembleContext`, update to use summary only. Research files themselves don't need to change -- just how they're consumed. |
-| Over-engineered state machine | MEDIUM | Simplify state model, remove transition guards, migrate state data. Harder if other commands depend on research state transitions. |
-| Scope creep (built too much) | HIGH | Cannot easily un-ship features users depend on. Must maintain or deprecate. Prevention is critical here. |
-| Research in wrong storage location (workstream instead of shared) | MEDIUM | Write migration script to move files from workstream dirs to shared. Update path references in all commands. |
-| Broken discuss-phase integration | LOW | Update discuss-phase slash command markdown to read research files in Step 3. No TypeScript changes needed. |
-| Git history bloat from research commits | LOW (for future) | Cannot rewrite history easily, but can fix commit strategy going forward. Squash research commits on feature branches before merge. |
-| Conversation continuity failure | LOW | Improve research file structure to be more self-contained. Update slash command prompt to explicitly instruct "read existing research first." No code changes. |
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Context window bloat | Phase 1: Research storage design | Context packet with research stays under 500 lines; summary is under 200 lines |
-| Over-engineered state machine | Phase 1: Research storage design | Research tracking uses 3 or fewer status values; no transition validation code exists |
-| Research scope creep | Phase 0: Requirements/scoping | Written "out of scope" list exists in milestone requirements; reviewed before each phase |
-| Breaking discuss/plan/execute flow | Phase 1: Storage design + Phase 2: Command design | Research lives in `.branchos/shared/research/`; discuss-phase references it; no `research: PhaseStep` in Phase interface |
-| Conversation persistence gap | Phase 2: Slash command design | New Claude session can continue research from artifacts alone; tested by running command in fresh conversation |
-| Git history bloat | Phase 2: Slash command implementation | Research session produces at most 1-2 commits total |
-| Research without workstream | Phase 1: Storage design | `/branchos:research` works on main branch with no active workstream |
-| Discuss-phase integration | Phase 3: Integration | `/branchos:discuss-phase` reads and surfaces existing research artifacts |
+| PR body corruption | LOW | Switch to --body-file approach. Existing PRs can be manually edited or updated via gh pr edit. |
+| Feature file parsing broken by format change | MEDIUM | Revert body convention, ensure parser handles missing `## Acceptance Criteria` section gracefully. May need to fix feature files manually. |
+| Blocking workstream creation from gh dependency | LOW | Wrap gh call in try/catch. No data migration needed -- just a code fix. |
+| Missing schema migration | LOW-MEDIUM | Write migration retroactively. Existing workstream files may need a fixup script if readMeta started throwing. |
+| Duplicate PRs created | LOW | Close duplicates manually via `gh pr close`. Add idempotency check going forward. |
+| Assignee silently not set | LOW | Re-run sync-issues after fixing permission/validation. No data loss. |
+| GWT format too rigid | LOW | Add checklist format support alongside GWT. Existing GWT scenarios still work. |
 
 ## Sources
 
-- Direct codebase analysis: `src/cli/context.ts` (AssemblyInput with 14 fields, context assembly flow), `src/state/state.ts` (WorkstreamState and Phase interfaces), `commands/branchos:discuss-phase.md` (8-step slash command pattern with auto-commit), `commands/branchos:context.md` (context loading pattern)
-- BranchOS PROJECT.md (v2.1 milestone definition, architectural constraints, key decisions)
-- Prior v2.0 pitfalls research (2026-03-09) -- established patterns for integration gotchas and state management
-- Claude Code slash command architecture constraints: stateless invocations, `allowed-tools` scoping, `$ARGUMENTS` passthrough pattern
+- Direct codebase analysis: `src/github/index.ts` (ghExec, checkGhAvailable), `src/github/issues.ts` (createIssue with --body-file pattern, updateIssue), `src/workstream/create.ts` (createWorkstream, createFeatureLinkedWorkstream), `src/state/meta.ts` (WorkstreamMeta interface), `src/state/schema.ts` (migration chain v0->v1->v2), `src/roadmap/types.ts` (Feature, FeatureFrontmatter), `src/roadmap/frontmatter.ts` (splitFrontmatter, single-line YAML parsing), `src/roadmap/feature-file.ts` (readFeatureFile, writeFeatureFile), `src/cli/context.ts` (formatFeatureContext, contextHandler), `src/context/assemble.ts` (AssemblyInput, STEP_SECTIONS), `src/cli/sync-issues.ts` (syncIssuesHandler, retryOnRateLimit, SyncIssuesResult)
+- [gh pr create documentation](https://cli.github.com/manual/gh_pr_create) -- flags, --body-file support, fork behavior
+- [gh issue edit documentation](https://cli.github.com/manual/gh_issue_edit) -- --add-assignee flag, limitations
+- [gh CLI: cannot assign non-org members](https://github.com/cli/cli/issues/9620) -- assignee permission failures
+- [gh CLI: unable to assign issues via --add-assignee](https://github.com/cli/cli/issues/6235) -- @me syntax issues
+- [gh CLI: PR create does not detect existing PRs](https://github.com/cli/cli/discussions/5792) -- duplicate PR creation
+- [gh pr create --body multiline issues](https://github.com/cli/cli/issues/595) -- special character handling
+- [gh auth status JSON output request](https://github.com/cli/cli/issues/8637) -- programmatic username extraction
+- [Gherkin best practices and common mistakes](https://testquality.com/how-to-write-effective-gherkin-acceptance-criteria/) -- GWT format pitfalls
+- [When to use Given-When-Then acceptance criteria](https://www.ranorex.com/blog/given-when-then-tests/) -- GWT applicability limits
+- BranchOS PROJECT.md (v2.2 milestone definition, architectural constraints, key decisions)
 
 ---
-*Pitfalls research for: BranchOS v2.1 Interactive Research Slash Commands*
-*Researched: 2026-03-11*
+*Pitfalls research for: BranchOS v2.2 PR Workflow & Developer Experience*
+*Researched: 2026-03-13*

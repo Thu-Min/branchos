@@ -62,11 +62,11 @@
   3. `plan-roadmap` generates GWT-formatted acceptance criteria for new features
   4. Context packets for discuss/plan/execute include parsed GWT criteria
   5. GWT parser handles Given, When, Then, and And keywords correctly
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: GWT parser and feature file integration
-- [ ] 15-02: Context assembly and roadmap generation updates
+- [ ] 15-01-PLAN.md &mdash; GWT parser with TDD (types, parser, formatter)
+- [ ] 15-02-PLAN.md &mdash; Context assembly integration and plan-roadmap GWT format
 
 ### Phase 16: Assignee Capture & Schema Migration
 **Goal**: Workstreams automatically know which developer created them

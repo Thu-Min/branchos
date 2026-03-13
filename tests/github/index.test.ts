@@ -249,6 +249,129 @@ describe('ensureMilestone', () => {
   });
 });
 
+describe('captureAssignee', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('returns GitHub login string when gh is available and authenticated', async () => {
+    const { captureAssignee } = await import('../../src/github/index.js');
+    // gh --version succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'gh version 2.40.0', '');
+      }) as any,
+    );
+    // gh auth status succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'Logged in to github.com', '');
+      }) as any,
+    );
+    // gh api /user returns user JSON
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, JSON.stringify({ login: 'octocat', id: 1, name: 'The Octocat', email: 'octocat@github.com' }), '');
+      }) as any,
+    );
+
+    const result = await captureAssignee();
+    expect(result).toBe('octocat');
+  });
+
+  it('returns null and logs warning when gh CLI is not installed', async () => {
+    const { captureAssignee } = await import('../../src/github/index.js');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // gh --version fails (not found)
+    mockExecFileError(127, 'command not found');
+
+    const result = await captureAssignee();
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub CLI'));
+    warnSpy.mockRestore();
+  });
+
+  it('throws error with "gh auth login" message when gh is installed but not authenticated', async () => {
+    const { captureAssignee } = await import('../../src/github/index.js');
+    // gh --version succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'gh version 2.40.0', '');
+      }) as any,
+    );
+    // gh auth status fails
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        const err = new Error('not logged in') as any;
+        err.code = 1;
+        err.stderr = 'not logged in';
+        callback(err, '', 'not logged in');
+      }) as any,
+    );
+
+    await expect(captureAssignee()).rejects.toThrow('gh auth login');
+  });
+
+  it('extracts only the login field from the API response', async () => {
+    const { captureAssignee } = await import('../../src/github/index.js');
+    // gh --version succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'gh version 2.40.0', '');
+      }) as any,
+    );
+    // gh auth status succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'Logged in', '');
+      }) as any,
+    );
+    // gh api /user returns full user object
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, JSON.stringify({
+          login: 'testuser',
+          id: 12345,
+          node_id: 'MDQ6VXNlcjEyMzQ1',
+          avatar_url: 'https://avatars.githubusercontent.com/u/12345',
+          name: 'Test User',
+          email: 'test@example.com',
+          bio: 'A developer',
+        }), '');
+      }) as any,
+    );
+
+    const result = await captureAssignee();
+    expect(result).toBe('testuser');
+    // Should be a string, not an object
+    expect(typeof result).toBe('string');
+  });
+
+  it('throws on JSON parse failure when gh is available and authenticated but response is malformed', async () => {
+    const { captureAssignee } = await import('../../src/github/index.js');
+    // gh --version succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'gh version 2.40.0', '');
+      }) as any,
+    );
+    // gh auth status succeeds
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'Logged in', '');
+      }) as any,
+    );
+    // gh api /user returns malformed JSON
+    mockedExecFile.mockImplementationOnce(
+      ((_file: string, _args: any, callback: any) => {
+        callback(null, 'not valid json {{{', '');
+      }) as any,
+    );
+
+    await expect(captureAssignee()).rejects.toThrow();
+  });
+});
+
 describe('FEATURE_STATUSES', () => {
   it("includes 'dropped' as a valid status", async () => {
     const { FEATURE_STATUSES } = await import('../../src/roadmap/types.js');

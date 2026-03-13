@@ -54,7 +54,7 @@ Use this format:
 
 ### Feature files at `.branchos/shared/features/F-NNN-<slug>.md`
 
-Each feature file uses YAML frontmatter:
+Each feature file uses YAML frontmatter and GWT acceptance criteria:
 \`\`\`markdown
 ---
 id: F-001
@@ -63,12 +63,23 @@ status: unassigned
 milestone: M1
 branch: feature/<slug>
 issue: null
+workstream: null
 ---
+
+<Feature description -- 1-2 sentences of what this feature delivers>
 
 ## Acceptance Criteria
 
-- [ ] <criterion 1>
-- [ ] <criterion 2>
+### AC-1
+Given <precondition>
+When <action>
+Then <expected outcome>
+
+### AC-2
+Given <precondition>
+When <action>
+Then <expected outcome>
+And <additional outcome>
 \`\`\`
 
 ## Step 4: Commit
@@ -90,5 +101,10 @@ This validates preconditions and auto-commits the generated files.
 - Features should be workstream-sized (1-3 sessions of work)
 - All features start with status `unassigned`
 - Keep features fine-grained -- prefer more small features over fewer large ones
+- Generate 2-4 AC blocks per feature (covers happy path + key edge cases)
+- Use human-readable language ("Given a developer..." not "Given meta.featureId is non-null")
+- Every AC block MUST have all three: Given, When, Then
+- Use And to continue the preceding keyword type
+- No scenario labels -- just ### AC-N headings
 
 $ARGUMENTS

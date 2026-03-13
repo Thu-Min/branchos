@@ -10,6 +10,8 @@ import { createInitialState, writeState } from '../state/state.js';
 import { readAllFeatures, writeFeatureFile } from '../roadmap/feature-file.js';
 import { featureBranch } from '../roadmap/slug.js';
 import { promptYesNo } from './prompt.js';
+import { titleSimilarity } from '../roadmap/similarity.js';
+import type { Feature } from '../roadmap/types.js';
 
 export interface CreateWorkstreamResult {
   workstreamId: string;
@@ -200,4 +202,26 @@ async function createFeatureLinkedWorkstream(
     created: true,
     featureId,
   };
+}
+
+export function findFeatureByIssue(
+  features: Feature[],
+  issueNumber: number,
+  issueTitle: string,
+): Feature | null {
+  // Tier 1: exact issue number match
+  const exactMatch = features.find((f) => f.issue === issueNumber);
+  if (exactMatch) return exactMatch;
+
+  // Tier 2: title similarity at 0.8 threshold
+  let bestMatch: Feature | null = null;
+  let bestScore = 0;
+  for (const f of features) {
+    const score = titleSimilarity(f.title, issueTitle);
+    if (score >= 0.8 && score > bestScore) {
+      bestScore = score;
+      bestMatch = f;
+    }
+  }
+  return bestMatch;
 }

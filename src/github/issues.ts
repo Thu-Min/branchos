@@ -3,6 +3,30 @@ import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+export interface IssueData {
+  number: number;
+  title: string;
+  body: string;
+  labels: string[];
+  url: string;
+}
+
+export async function fetchIssue(issueNumber: number): Promise<IssueData> {
+  const jsonRaw = await ghExec([
+    'issue', 'view', String(issueNumber),
+    '--json', 'title,body,labels,url',
+  ]);
+  const parsed = JSON.parse(jsonRaw);
+
+  return {
+    number: issueNumber,
+    title: parsed.title,
+    body: parsed.body,
+    labels: (parsed.labels || []).map((l: { name: string }) => l.name),
+    url: parsed.url,
+  };
+}
+
 export interface CreateIssueOptions {
   title: string;
   body: string;

@@ -77,10 +77,10 @@ Plans:
   2. Workstream creation succeeds even when `gh` CLI is unavailable (assignee is null, no error)
   3. Existing workstreams migrate cleanly to schema v3 with null assignee and issueNumber fields
   4. `meta.json` contains `assignee` and `issueNumber` fields after migration
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 16-01: Username capture, meta schema, and v2-to-v3 migration
+- [ ] 16-01-PLAN.md -- Schema migration v2-to-v3, captureAssignee function, createWorkstream wiring (TDD)
 
 ### Phase 17: Issue-Linked Workstreams
 **Goal**: Developers can create workstreams directly from GitHub issues

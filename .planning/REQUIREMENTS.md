@@ -31,9 +31,9 @@ Requirements for PR Workflow & Developer Experience milestone. Each maps to road
 
 ### Issue-Linked Workstreams
 
-- [ ] **ISS-01**: `create-workstream --issue #N` fetches issue title/description from GitHub
-- [ ] **ISS-02**: Issue-linked workstream auto-links to feature if issue was created by sync-issues
-- [ ] **ISS-03**: Issue metadata (title, labels, body) stored in workstream context
+- [x] **ISS-01**: `create-workstream --issue #N` fetches issue title/description from GitHub
+- [x] **ISS-02**: Issue-linked workstream auto-links to feature if issue was created by sync-issues
+- [x] **ISS-03**: Issue metadata (title, labels, body) stored in workstream context
 
 ### Assignee Tracking
 
@@ -85,9 +85,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | ASN-03 | Phase 18 | Pending |
 | ASN-04 | Phase 16 | Complete |
 | ASN-05 | Phase 16 | Complete |
-| ISS-01 | Phase 17 | Pending |
-| ISS-02 | Phase 17 | Pending |
-| ISS-03 | Phase 17 | Pending |
+| ISS-01 | Phase 17 | Complete |
+| ISS-02 | Phase 17 | Complete |
+| ISS-03 | Phase 17 | Complete |
 | PR-01 | Phase 18 | Pending |
 | PR-02 | Phase 18 | Pending |
 | PR-03 | Phase 18 | Pending |

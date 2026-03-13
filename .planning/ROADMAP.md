@@ -47,7 +47,7 @@
 
 - [x] **Phase 15: GWT Acceptance Criteria** - Feature files support Given/When/Then format with backward-compatible freeform fallback (completed 2026-03-13)
 - [x] **Phase 16: Assignee Capture & Schema Migration** - Automatic GitHub username capture on workstream creation with schema v3 migration (completed 2026-03-13)
-- [ ] **Phase 17: Issue-Linked Workstreams** - Create workstreams from GitHub issues with auto-feature linking
+- [x] **Phase 17: Issue-Linked Workstreams** - Create workstreams from GitHub issues with auto-feature linking (completed 2026-03-13)
 - [ ] **Phase 18: Create-PR Command & Assignee Sync** - One-command PR creation from workstream artifacts with assignee propagation
 
 ## Phase Details
@@ -93,7 +93,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 17-01-PLAN.md -- fetchIssue helper, findFeatureByIssue reverse-lookup, issue-linked createWorkstream path, context assembly integration
+- [x] 17-01-PLAN.md -- fetchIssue helper, findFeatureByIssue reverse-lookup, issue-linked createWorkstream path, context assembly integration
 
 ### Phase 18: Create-PR Command & Assignee Sync
 **Goal**: Developers can create a complete, well-structured GitHub PR with one command
@@ -133,9 +133,9 @@ Plans:
 | 14. Discuss Project Command | v2.1 | 1/1 | Complete | 2026-03-11 |
 | 15. GWT Acceptance Criteria | 2/2 | Complete    | 2026-03-13 | - |
 | 16. Assignee Capture & Schema Migration | 1/1 | Complete    | 2026-03-13 | - |
-| 17. Issue-Linked Workstreams | v2.2 | 0/1 | Not started | - |
+| 17. Issue-Linked Workstreams | v2.2 | 1/1 | Complete | 2026-03-13 |
 | 18. Create-PR Command & Assignee Sync | v2.2 | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-07*
-*Last updated: 2026-03-13 -- v2.2 phases added*
+*Last updated: 2026-03-13 -- Phase 17 complete*

@@ -48,7 +48,7 @@
 - [x] **Phase 15: GWT Acceptance Criteria** - Feature files support Given/When/Then format with backward-compatible freeform fallback (completed 2026-03-13)
 - [x] **Phase 16: Assignee Capture & Schema Migration** - Automatic GitHub username capture on workstream creation with schema v3 migration (completed 2026-03-13)
 - [x] **Phase 17: Issue-Linked Workstreams** - Create workstreams from GitHub issues with auto-feature linking (completed 2026-03-13)
-- [ ] **Phase 18: Create-PR Command & Assignee Sync** - One-command PR creation from workstream artifacts with assignee propagation
+- [x] **Phase 18: Create-PR Command & Assignee Sync** - One-command PR creation from workstream artifacts with assignee propagation (completed 2026-03-13)
 
 ## Phase Details
 
@@ -134,7 +134,7 @@ Plans:
 | 15. GWT Acceptance Criteria | 2/2 | Complete    | 2026-03-13 | - |
 | 16. Assignee Capture & Schema Migration | 1/1 | Complete    | 2026-03-13 | - |
 | 17. Issue-Linked Workstreams | v2.2 | Complete    | 2026-03-13 | 2026-03-13 |
-| 18. Create-PR Command & Assignee Sync | 1/2 | In Progress|  | - |
+| 18. Create-PR Command & Assignee Sync | 2/2 | Complete   | 2026-03-13 | - |
 
 ---
 *Roadmap created: 2026-03-07*

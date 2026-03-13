@@ -9,17 +9,17 @@ Requirements for PR Workflow & Developer Experience milestone. Each maps to road
 
 ### PR Creation
 
-- [ ] **PR-01**: Developer can create a GitHub PR from workstream context via `/branchos:create-pr`
-- [ ] **PR-02**: PR body includes feature description from feature file
-- [ ] **PR-03**: PR body includes phase summaries (discuss/plan/execute artifacts)
-- [ ] **PR-04**: PR body includes acceptance criteria as checkable GWT checklist
-- [ ] **PR-05**: PR body includes `Closes #N` linked issue reference when issue exists
-- [ ] **PR-06**: PR body includes branch diff stats (files changed, insertions, deletions)
-- [ ] **PR-07**: PR auto-assigned to workstream creator's GitHub username
-- [ ] **PR-08**: PR targets repo default branch (with override support)
-- [ ] **PR-09**: Confirmation flow shows assembled PR body before submitting
-- [ ] **PR-10**: Idempotency check prevents duplicate PRs for same branch
-- [ ] **PR-11**: PR body written via `--body-file` (not inline `--body`)
+- [x] **PR-01**: Developer can create a GitHub PR from workstream context via `/branchos:create-pr`
+- [x] **PR-02**: PR body includes feature description from feature file
+- [x] **PR-03**: PR body includes phase summaries (discuss/plan/execute artifacts)
+- [x] **PR-04**: PR body includes acceptance criteria as checkable GWT checklist
+- [x] **PR-05**: PR body includes `Closes #N` linked issue reference when issue exists
+- [x] **PR-06**: PR body includes branch diff stats (files changed, insertions, deletions)
+- [x] **PR-07**: PR auto-assigned to workstream creator's GitHub username
+- [x] **PR-08**: PR targets repo default branch (with override support)
+- [x] **PR-09**: Confirmation flow shows assembled PR body before submitting
+- [x] **PR-10**: Idempotency check prevents duplicate PRs for same branch
+- [x] **PR-11**: PR body written via `--body-file` (not inline `--body`)
 
 ### Acceptance Criteria
 
@@ -88,17 +88,17 @@ Deferred to future release. Tracked but not in current roadmap.
 | ISS-01 | Phase 17 | Complete |
 | ISS-02 | Phase 17 | Complete |
 | ISS-03 | Phase 17 | Complete |
-| PR-01 | Phase 18 | Pending |
-| PR-02 | Phase 18 | Pending |
-| PR-03 | Phase 18 | Pending |
-| PR-04 | Phase 18 | Pending |
-| PR-05 | Phase 18 | Pending |
-| PR-06 | Phase 18 | Pending |
-| PR-07 | Phase 18 | Pending |
-| PR-08 | Phase 18 | Pending |
-| PR-09 | Phase 18 | Pending |
-| PR-10 | Phase 18 | Pending |
-| PR-11 | Phase 18 | Pending |
+| PR-01 | Phase 18 | Complete |
+| PR-02 | Phase 18 | Complete |
+| PR-03 | Phase 18 | Complete |
+| PR-04 | Phase 18 | Complete |
+| PR-05 | Phase 18 | Complete |
+| PR-06 | Phase 18 | Complete |
+| PR-07 | Phase 18 | Complete |
+| PR-08 | Phase 18 | Complete |
+| PR-09 | Phase 18 | Complete |
+| PR-10 | Phase 18 | Complete |
+| PR-11 | Phase 18 | Complete |
 
 **Coverage:**
 - v2.2 requirements: 24 total

@@ -2,6 +2,11 @@
 
 All notable changes to BranchOS are documented in this file.
 
+## [2.2.3] - 2026-03-14
+
+### Fixed
+- **Non-Interactive Prompt Fix** — Added `--yes` flag to `create-workstream` to skip interactive prompts. Fixes `--issue` and `--feature` failing with "Aborted" when invoked via slash commands (non-TTY).
+
 ## [2.2.2] - 2026-03-13
 
 ### Added

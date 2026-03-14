@@ -28,8 +28,9 @@ export async function createWorkstream(options: {
   nameOverride?: string;
   featureId?: string;
   issueNumber?: number;
+  yes?: boolean;
 }): Promise<CreateWorkstreamResult> {
-  const { repoRoot, nameOverride, featureId, issueNumber } = options;
+  const { repoRoot, nameOverride, featureId, issueNumber, yes } = options;
   const git = new GitOps(repoRoot);
 
   // Check .branchos/ exists
@@ -64,7 +65,7 @@ export async function createWorkstream(options: {
       );
     }
 
-    const result = await createFeatureLinkedWorkstream(repoRoot, git, branchosPath, matchedFeature.id, issueNumber);
+    const result = await createFeatureLinkedWorkstream(repoRoot, git, branchosPath, matchedFeature.id, issueNumber, yes);
 
     // Write issue.md to workstream directory
     await writeIssueFile(result.path, issueData);
@@ -81,7 +82,7 @@ export async function createWorkstream(options: {
 
   // Feature-linked flow
   if (featureId) {
-    return createFeatureLinkedWorkstream(repoRoot, git, branchosPath, featureId);
+    return createFeatureLinkedWorkstream(repoRoot, git, branchosPath, featureId, undefined, yes);
   }
 
   // Standard flow: get current branch
@@ -148,6 +149,7 @@ async function createFeatureLinkedWorkstream(
   branchosPath: string,
   featureId: string,
   issueNumber?: number,
+  yes?: boolean,
 ): Promise<CreateWorkstreamResult> {
   // 1. Read features
   const featuresDir = join(branchosPath, SHARED_DIR, 'features');
@@ -182,11 +184,13 @@ async function createFeatureLinkedWorkstream(
   // 6. Handle branch: check if exists, create or checkout
   const exists = await git.branchExists(branchName);
   if (exists) {
-    const confirmed = await promptYesNo(
-      `Branch ${branchName} already exists. Use it? (y/n) `,
-    );
-    if (!confirmed) {
-      throw new Error('Aborted.');
+    if (!yes) {
+      const confirmed = await promptYesNo(
+        `Branch ${branchName} already exists. Use it? (y/n) `,
+      );
+      if (!confirmed) {
+        throw new Error('Aborted.');
+      }
     }
     await git.checkoutBranch(branchName);
   } else {

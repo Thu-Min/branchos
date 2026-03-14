@@ -14,6 +14,7 @@ export function registerWorkstreamCommands(program: Command): void {
     .option('--name <name>', 'Override auto-derived workstream ID')
     .option('--feature <id>', 'Link to a feature by ID (e.g., F-001)')
     .option('--issue <number>', 'Create from GitHub issue number (e.g., 42 or #42)')
+    .option('--yes', 'Skip interactive prompts and auto-accept')
     .option('--json', 'Output in JSON format', false)
     .action(async (opts) => {
       const jsonMode = opts.json as boolean;
@@ -56,6 +57,7 @@ export function registerWorkstreamCommands(program: Command): void {
           nameOverride: opts.name as string | undefined,
           featureId: opts.feature as string | undefined,
           issueNumber,
+          yes: opts.yes as boolean | undefined,
         });
 
         if (jsonMode) {

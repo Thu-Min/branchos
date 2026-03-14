@@ -276,6 +276,23 @@ describe('createWorkstream with featureId', () => {
     spy.mockRestore();
   });
 
+  it('skips prompt and uses existing branch when yes option is true', async () => {
+    // Create the branch ahead of time
+    execSync('git checkout -b feature/user-auth', { cwd: tempDir, stdio: 'pipe' });
+    execSync('git commit --allow-empty -m "branch exists"', { cwd: tempDir });
+    execSync('git checkout -', { cwd: tempDir, stdio: 'pipe' });
+
+    // Spy on promptYesNo to verify it is NOT called
+    const promptModule = await import('../../src/workstream/prompt.js');
+    const spy = vi.spyOn(promptModule, 'promptYesNo');
+
+    const result = await createWorkstream({ repoRoot: tempDir, featureId: 'F-001', yes: true });
+    expect(result.created).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+
   it('aborts when branch exists and user declines', async () => {
     // Create the branch ahead of time
     execSync('git checkout -b feature/user-auth', { cwd: tempDir, stdio: 'pipe' });

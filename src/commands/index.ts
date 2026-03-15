@@ -14,6 +14,7 @@ import listWorkstreams from '../../commands/branchos:list-workstreams.md';
 import status from '../../commands/branchos:status.md';
 import archive from '../../commands/branchos:archive.md';
 import research from '../../commands/branchos:research.md';
+import createPr from '../../commands/branchos:create-pr.md';
 
 export const COMMANDS: Record<string, string> = {
   'branchos:map-codebase.md': mapCodebase,
@@ -32,4 +33,5 @@ export const COMMANDS: Record<string, string> = {
   'branchos:status.md': status,
   'branchos:archive.md': archive,
   'branchos:research.md': research,
+  'branchos:create-pr.md': createPr,
 };

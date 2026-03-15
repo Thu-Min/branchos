@@ -5,7 +5,7 @@ import { BRANCHOS_DIR, SHARED_DIR, WORKSTREAMS_DIR } from '../constants.js';
 import { slugifyBranch, isProtectedBranch } from './resolve.js';
 import { discoverWorkstreams } from './discover.js';
 import { createMeta, writeMeta } from '../state/meta.js';
-import { captureAssignee } from '../github/index.js';
+import { captureAssignee, ghExec } from '../github/index.js';
 import { createInitialState, writeState } from '../state/state.js';
 import { readAllFeatures, writeFeatureFile } from '../roadmap/feature-file.js';
 import { featureBranch } from '../roadmap/slug.js';
@@ -224,13 +224,24 @@ async function createFeatureLinkedWorkstream(
   const state = createInitialState();
   await writeState(join(wsPath, 'state.json'), state);
 
-  // 12. Update feature: status='in-progress', workstream=workstreamId
+  // 12. Update feature: status='in-progress', workstream=workstreamId, assignee
   const updatedFeature = {
     ...feature,
     status: 'in-progress' as const,
     workstream: workstreamId,
+    assignee: assignee,
   };
   await writeFeatureFile(featuresDir, updatedFeature);
+
+  // 12b. Auto-assign GitHub issue
+  const effectiveIssueNumber = issueNumber ?? feature.issue;
+  if (effectiveIssueNumber && assignee) {
+    try {
+      await ghExec(['issue', 'edit', String(effectiveIssueNumber), '--add-assignee', assignee]);
+    } catch (err: any) {
+      console.warn(`Warning: failed to assign issue #${effectiveIssueNumber} to ${assignee}: ${err.message}`);
+    }
+  }
 
   // 13. Atomic commit: workstream dir + feature file
   const wsRelativePath = join(BRANCHOS_DIR, WORKSTREAMS_DIR, workstreamId);

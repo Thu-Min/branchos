@@ -1,5 +1,5 @@
 ---
-description: List features or view feature details from the feature registry
+description: "List features or view details [<feature-id>] [--status <status>] [--milestone <id>] [--json]"
 allowed-tools: Bash(npx branchos features *)
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Create a PR-FAQ document through guided interactive discussion
+description: "Create a PR-FAQ document through guided interactive discussion"
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *), WebSearch, WebFetch, AskUserQuestion
 ---
 

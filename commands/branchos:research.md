@@ -1,5 +1,5 @@
 ---
-description: Start an interactive research session or save findings
+description: "Start an interactive research session or save findings [--save <topic>]"
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *), WebSearch, WebFetch, AskUserQuestion
 ---
 

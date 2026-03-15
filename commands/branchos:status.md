@@ -1,5 +1,5 @@
 ---
-description: Show BranchOS dashboard with workstream status, map staleness, drift, and conflicts
+description: "Show BranchOS dashboard — workstream status, map staleness, drift, and conflicts"
 allowed-tools: Bash(npx branchos *)
 ---
 

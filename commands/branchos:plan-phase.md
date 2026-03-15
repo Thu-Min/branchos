@@ -1,5 +1,5 @@
 ---
-description: Create implementation plan for current workstream phase
+description: "Create implementation plan for current workstream phase [<phase-number>]"
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
 

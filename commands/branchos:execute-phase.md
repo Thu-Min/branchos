@@ -1,5 +1,5 @@
 ---
-description: Update execution state for current workstream phase
+description: "Update execution state for current workstream phase [<phase-number>]"
 allowed-tools: Read, Glob, Grep, Write, Bash(git *), Bash(npx branchos *)
 ---
 

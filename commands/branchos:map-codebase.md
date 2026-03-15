@@ -1,5 +1,5 @@
 ---
-description: Generate or refresh the codebase map in .branchos/shared/codebase/
+description: "Generate or refresh the codebase map in .branchos/shared/codebase/"
 allowed-tools: Read, Glob, Grep, Write, Bash(git rev-parse HEAD), Bash(git add *), Bash(git commit *)
 ---
 

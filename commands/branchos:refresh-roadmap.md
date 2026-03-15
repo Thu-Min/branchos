@@ -1,5 +1,5 @@
 ---
-description: Refresh roadmap and features when the PR-FAQ has been updated
+description: "Refresh roadmap and features when PR-FAQ has been updated [--force] [--json]"
 allowed-tools: Read, Write, Bash(npx branchos *), Bash(git *)
 ---
 

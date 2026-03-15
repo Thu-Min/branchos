@@ -1,5 +1,5 @@
 ---
-description: List all BranchOS workstreams with status
+description: "List all BranchOS workstreams with status [--json]"
 allowed-tools: Bash(npx branchos *)
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Archive a completed workstream after branch merge
+description: "Archive a completed workstream after branch merge [--json]"
 allowed-tools: Bash(npx branchos *)
 ---
 

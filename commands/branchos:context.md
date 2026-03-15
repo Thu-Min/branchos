@@ -1,5 +1,5 @@
 ---
-description: Load workstream context for current phase
+description: "Load workstream context [discuss | plan | execute]"
 allowed-tools: Bash(npx branchos *)
 ---
 

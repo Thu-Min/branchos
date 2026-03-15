@@ -1,5 +1,5 @@
 ---
-description: Create a new BranchOS workstream
+description: "Create a new BranchOS workstream [--name <name>] [--feature <id>] [--json]"
 allowed-tools: Bash(npx branchos *)
 ---
 

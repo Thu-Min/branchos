@@ -1,5 +1,5 @@
 ---
-description: Generate roadmap and feature files from ingested PR-FAQ
+description: "Generate roadmap and feature files from ingested PR-FAQ [--force]"
 allowed-tools: Read, Write, Bash(npx branchos *), Bash(git *)
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Ingest PR-FAQ document for project planning
+description: "Ingest PR-FAQ document for project planning [--force] [--json]"
 allowed-tools: Bash(npx branchos ingest-prfaq *)
 ---
 

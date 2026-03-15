@@ -1,5 +1,5 @@
 ---
-description: Push feature definitions to GitHub Issues for team coordination
+description: "Push feature definitions to GitHub Issues [--dry-run] [--force] [--json]"
 allowed-tools: Bash(npx branchos *)
 ---
 

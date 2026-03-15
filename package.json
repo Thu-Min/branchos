@@ -1,6 +1,6 @@
 {
   "name": "branchos",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "type": "module",
   "description": "Branch-based AI-assisted development workflow management",
   "main": "dist/index.cjs",

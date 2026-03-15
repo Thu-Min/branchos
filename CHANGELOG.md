@@ -2,6 +2,11 @@
 
 All notable changes to BranchOS are documented in this file.
 
+## [2.2.4] - 2026-03-15
+
+### Fixed
+- **Missing create-pr Slash Command** — The `create-pr` command was not bundled in `install-commands`, so `/branchos:create-pr` was unavailable after installation. Now properly registered and installed.
+
 ## [2.2.3] - 2026-03-14
 
 ### Fixed

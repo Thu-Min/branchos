@@ -16,6 +16,7 @@ export interface FeatureFrontmatter {
   branch: string;
   issue: number | null;
   workstream: string | null;
+  assignee: string | null;
 }
 
 export interface Feature extends FeatureFrontmatter {

@@ -11,6 +11,7 @@ import { registerContextCommand } from "./context.js";
 import { registerFeaturesCommand } from "./features.js";
 import { registerIngestPrfaqCommand } from "./ingest-prfaq.js";
 import { registerCreatePrCommand } from "./create-pr.js";
+import { registerSyncIssuesCommand } from "./sync-issues.js";
 
 export const program = new Command();
 
@@ -34,6 +35,7 @@ registerContextCommand(program);
 registerFeaturesCommand(program);
 registerIngestPrfaqCommand(program);
 registerCreatePrCommand(program);
+registerSyncIssuesCommand(program);
 
 // Show help when no arguments provided
 program.action(() => {

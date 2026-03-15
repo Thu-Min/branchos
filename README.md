@@ -454,6 +454,7 @@ All state is committed to git, enabling full auditability and team visibility ac
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — Full setup walkthrough
+- [Commands Reference](docs/commands.md) — Detailed reference for every command
 - [CLI Reference](docs/cli-reference.md) — All terminal commands in detail
 - [Phase Workflow](docs/phase-workflow.md) — The Discuss → Plan → Execute cycle
 - [Slash Commands](docs/slash-commands.md) — Claude Code integration

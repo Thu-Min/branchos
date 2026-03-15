@@ -18,7 +18,7 @@ export const program = new Command();
 program
   .name("branchos")
   .description("Branch-based AI-assisted development workflow management")
-  .version("2.2.4");
+  .version("2.2.5");
 
 // Register bootstrapper commands
 registerInitCommand(program);

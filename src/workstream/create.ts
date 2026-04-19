@@ -185,6 +185,12 @@ async function createFeatureLinkedWorkstream(
   const exists = await git.branchExists(branchName);
   if (exists) {
     if (!yes) {
+      if (!process.stdin.isTTY) {
+        throw new Error(
+          `Branch '${branchName}' already exists for feature ${featureId}. ` +
+            `Re-run with --yes to use the existing branch.`,
+        );
+      }
       const confirmed = await promptYesNo(
         `Branch ${branchName} already exists. Use it? (y/n) `,
       );

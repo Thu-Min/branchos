@@ -265,15 +265,22 @@ describe('createWorkstream with featureId', () => {
     execSync('git commit --allow-empty -m "branch exists"', { cwd: tempDir });
     execSync('git checkout -', { cwd: tempDir, stdio: 'pipe' });
 
+    // Simulate interactive TTY so the prompt is reached
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+
     // Mock promptYesNo to return true
     const promptModule = await import('../../src/workstream/prompt.js');
     const spy = vi.spyOn(promptModule, 'promptYesNo').mockResolvedValue(true);
 
-    const result = await createWorkstream({ repoRoot: tempDir, featureId: 'F-001' });
-    expect(result.created).toBe(true);
-    expect(spy).toHaveBeenCalled();
-
-    spy.mockRestore();
+    try {
+      const result = await createWorkstream({ repoRoot: tempDir, featureId: 'F-001' });
+      expect(result.created).toBe(true);
+      expect(spy).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, configurable: true });
+    }
   });
 
   it('skips prompt and uses existing branch when yes option is true', async () => {
@@ -299,14 +306,40 @@ describe('createWorkstream with featureId', () => {
     execSync('git commit --allow-empty -m "branch exists"', { cwd: tempDir });
     execSync('git checkout -', { cwd: tempDir, stdio: 'pipe' });
 
+    // Simulate interactive TTY so the prompt is reached
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+
     // Mock promptYesNo to return false
     const promptModule = await import('../../src/workstream/prompt.js');
     const spy = vi.spyOn(promptModule, 'promptYesNo').mockResolvedValue(false);
 
-    await expect(
-      createWorkstream({ repoRoot: tempDir, featureId: 'F-001' })
-    ).rejects.toThrow('Aborted');
+    try {
+      await expect(
+        createWorkstream({ repoRoot: tempDir, featureId: 'F-001' })
+      ).rejects.toThrow('Aborted');
+    } finally {
+      spy.mockRestore();
+      Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, configurable: true });
+    }
+  });
 
-    spy.mockRestore();
+  it('throws actionable error when branch exists in non-TTY without --yes', async () => {
+    // Create the branch ahead of time
+    execSync('git checkout -b feature/user-auth', { cwd: tempDir, stdio: 'pipe' });
+    execSync('git commit --allow-empty -m "branch exists"', { cwd: tempDir });
+    execSync('git checkout -', { cwd: tempDir, stdio: 'pipe' });
+
+    // Force non-TTY (simulates slash-command invocation)
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true });
+
+    try {
+      await expect(
+        createWorkstream({ repoRoot: tempDir, featureId: 'F-001' })
+      ).rejects.toThrow(/already exists.*--yes/);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, configurable: true });
+    }
   });
 });
